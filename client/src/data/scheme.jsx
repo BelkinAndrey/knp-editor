@@ -1,4 +1,5 @@
-export const Nodes = [
+export const Scheme = {
+  nodes: [
     {
       id: '1',
       data: { label: 'Input Node' },
@@ -15,10 +16,10 @@ export const Nodes = [
       data: { label: 'Output Node' },
       position: { x: 250, y: 250 },
     },
-  ];
+  ],
 
-export const Edges = [
+  edges: [
     { id: 'e1-2', source: '1', target: '2' },
     { id: 'e2-3', source: '2', target: '3', animated: true },
-  ];
-  
+  ]
+};

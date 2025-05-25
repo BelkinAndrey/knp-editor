@@ -9,6 +9,25 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
   const [newFileName, setNewFileName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        return 'Date not specified';
+      }
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${hours}:${minutes}:${seconds} -- ${day}.${month}.${year}`;
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return 'Date not specified';
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       fetchSchemas();
@@ -21,7 +40,7 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
       const response = await axios.get(API_URL);
       setSchemas(response.data);
     } catch (error) {
-      console.error('Ошибка при загрузке схем:', error);
+      console.error('Error loading schemas:', error);
     } finally {
       setIsLoading(false);
     }
@@ -29,7 +48,7 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
 
   const handleSave = async () => {
     if (!newFileName.trim()) {
-      alert('Пожалуйста, введите название файла');
+      alert('Please enter a file name');
       return;
     }
 
@@ -40,29 +59,31 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
         edges: currentSchema.edges
       });
 
-      if (response.status === 200) {
-        setNewFileName('');
-        fetchSchemas();
-      }
+      setNewFileName('');
+      fetchSchemas();
+      onClose();
     } catch (error) {
-      console.error('Ошибка при сохранении:', error);
-      alert('Не удалось сохранить схему');
+      console.error('Error saving:', error);
+      alert(`Failed to save schema: ${error.response?.data?.message || error.message}`);
     }
   };
 
   const handleDelete = async (schemaId) => {
-    if (!window.confirm('Вы уверены, что хотите удалить эту схему?')) {
-      return;
-    }
-
     try {
+      console.log('Deleting schema with ID:', schemaId);
       const response = await axios.delete(`${API_URL}/${schemaId}`);
       if (response.status === 200) {
+        console.log('Schema successfully deleted');
         fetchSchemas();
       }
     } catch (error) {
-      console.error('Ошибка при удалении:', error);
-      alert('Не удалось удалить схему');
+      console.error('Error deleting:', error);
+      console.error('Error details:', {
+        status: error.response?.status,
+        data: error.response?.data,
+        url: `${API_URL}/${schemaId}`
+      });
+      alert('Failed to delete schema');
     }
   };
 
@@ -72,34 +93,66 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Управление файлами</h2>
+          <h2>File Management</h2>
           <button className="close-button" onClick={onClose}>×</button>
         </div>
         
         <div className="modal-body">
           <div className="schemas-list">
             {isLoading ? (
-              <p>Загрузка...</p>
+              <p>Loading...</p>
             ) : schemas.length === 0 ? (
-              <p>Нет сохраненных схем</p>
+              <p>No saved schemas</p>
             ) : (
               schemas.map(schema => (
                 <div key={schema._id} className="schema-item">
                   <div 
                     className="schema-info"
-                    onClick={() => onLoadSchema({ nodes: schema.nodes, edges: schema.edges })}
+                    onClick={() => {
+                      try {
+                        const schemaData = {
+                          nodes: Array.isArray(schema.nodes) ? schema.nodes.map(node => {
+                            let label = node.data?.label;
+                            if (label && typeof label === 'object' && 'props' in label) {
+                              label = label.props?.children || 'Default Node';
+                            }
+                            
+                            return {
+                              ...node,
+                              id: String(node.id),
+                              type: String(node.type || 'default'),
+                              data: {
+                                ...node.data,
+                                label: label
+                              }
+                            };
+                          }) : [],
+                          edges: Array.isArray(schema.edges) ? schema.edges.map(edge => ({
+                            ...edge,
+                            id: String(edge.id),
+                            source: String(edge.source),
+                            target: String(edge.target)
+                          })) : []
+                        };
+                        onLoadSchema(schemaData);
+                        onClose();
+                      } catch (error) {
+                        console.error('Error loading schema:', error);
+                        alert('Failed to load schema');
+                      }
+                    }}
                   >
                     <span className="schema-name">{schema.name}</span>
                     <span className="schema-date">
-                      {new Date(schema.updatedAt).toLocaleString()}
+                      {formatDate(schema.createdAt)}
                     </span>
                   </div>
                   <button
                     className="delete-button"
                     onClick={() => handleDelete(schema._id)}
-                    aria-label="Удалить схему"
+                    aria-label="Delete schema"
                   >
-                    🗑️
+                    
                   </button>
                 </div>
               ))
@@ -111,7 +164,12 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
               type="text"
               value={newFileName}
               onChange={(e) => setNewFileName(e.target.value)}
-              placeholder="Введите название файла"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSave();
+                }
+              }}
+              placeholder="Enter file name"
               className="filename-input"
             />
             <button 

@@ -159,7 +159,6 @@
 /* Стили для панели с информацией */
 .react-flow__panel {
   background-color: var(--bg-secondary);
-  padding: 8px 12px;
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   font-size: 12px;
@@ -196,11 +195,6 @@
 
 .react-flow__interactive:active {
   cursor: grabbing;
-}
-
-/* Стили для зума */
-.react-flow__viewport {
-  transition: transform 0.2s ease;
 }
 
 /* Стили для выделения при перетаскивании */

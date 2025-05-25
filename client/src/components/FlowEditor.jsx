@@ -1,21 +1,33 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import ReactFlow, { Controls, Background, Handle, Position, ReactFlowProvider, applyEdgeChanges, applyNodeChanges  } from 'reactflow';
 import 'reactflow/dist/style.css';
-import {Nodes, Edges} from '../data/scheme';
 
-const FlowEditorContent = () => {
-  const [nodes, setNodes] = useState(Nodes);
-  const [edges, setEdges] = useState(Edges);
+const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
+  const [nodes, setNodes] = useState(currentSchema.nodes);
+  const [edges, setEdges] = useState(currentSchema.edges);
+
+  useEffect(() => {
+    setNodes(currentSchema.nodes);
+    setEdges(currentSchema.edges);
+  }, [currentSchema]);
 
   const onNodesChange = useCallback(
-    (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
-    [setNodes],
-  );
-  const onEdgesChange = useCallback(
-    (changes) => setEdges((eds) => applyEdgeChanges(changes, eds)),
-    [setEdges],
+    (changes) => {
+      const newNodes = applyNodeChanges(changes, nodes);
+      setNodes(newNodes);
+      onSchemaChange({ nodes: newNodes, edges });
+    },
+    [nodes, edges, onSchemaChange],
   );
 
+  const onEdgesChange = useCallback(
+    (changes) => {
+      const newEdges = applyEdgeChanges(changes, edges);
+      setEdges(newEdges);
+      onSchemaChange({ nodes, edges: newEdges });
+    },
+    [nodes, edges, onSchemaChange],
+  );
 
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
@@ -24,17 +36,22 @@ const FlowEditorContent = () => {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        fitView
       >
         <Background />
+        <Controls showZoom={false} showInteractive={false} />
       </ReactFlow>
     </div>
   );
 };
 
-const FlowEditor = () => {
+const FlowEditor = ({ currentSchema, onSchemaChange }) => {
   return (
     <ReactFlowProvider>
-      <FlowEditorContent />
+      <FlowEditorContent 
+        currentSchema={currentSchema}
+        onSchemaChange={onSchemaChange}
+      />
     </ReactFlowProvider>
   );
 };

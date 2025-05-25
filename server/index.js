@@ -35,6 +35,19 @@ app.get('/api/schemes', async (req, res) => {
   res.send(schemes);
 });
 
+app.delete('/api/schemes/:id', async (req, res) => {
+  try {
+    const result = await Scheme.findByIdAndDelete(req.params.id);
+    if (!result) {
+      return res.status(404).send({ message: 'Схема не найдена' });
+    }
+    res.status(200).send({ message: 'Схема успешно удалена' });
+  } catch (error) {
+    console.error('Ошибка при удалении схемы:', error);
+    res.status(500).send({ message: 'Ошибка при удалении схемы' });
+  }
+});
+
 // Запуск сервера
 app.listen(process.env.PORT, () => {
   console.log(`Server running on http://localhost:${process.env.PORT}`);
