@@ -1,7 +1,7 @@
 import React from 'react';
 import './ContextMenu.css';
 
-const ContextMenu = ({ x, y, onClose, onCreateNode }) => {
+const ContextMenu = ({ x, y, onClose, onCreateNode, onMouseLeave }) => {
   const handleClick = (e) => {
     e.stopPropagation();
     onCreateNode({ x, y });
@@ -16,6 +16,7 @@ const ContextMenu = ({ x, y, onClose, onCreateNode }) => {
         left: x,
         top: y,
       }}
+      onMouseLeave={onMouseLeave}
     >
       <button 
         className="context-menu-item"
