@@ -1,7 +1,16 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import ReactFlow, { Controls, Background, Handle, Position, ReactFlowProvider, applyEdgeChanges, applyNodeChanges, useReactFlow } from 'reactflow';
+import ReactFlow, { Controls, Background, Handle, Position, ReactFlowProvider, applyEdgeChanges, applyNodeChanges, useReactFlow, addEdge } from 'reactflow';
 import 'reactflow/dist/style.css';
 import ContextMenu from './ContextMenu';
+import InputNode from '../elements/InputNode';
+import OutputNode from '../elements/OutputNode';
+import PopulationNode from '../elements/PopulationNode';
+
+const nodeTypes = {
+  inputNode: InputNode,
+  outputNode: OutputNode,
+  populationNode: PopulationNode,
+};
 
 const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const [nodes, setNodes] = useState(currentSchema.nodes);
@@ -30,6 +39,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       onSchemaChange({ nodes, edges: newEdges });
     },
     [nodes, edges, onSchemaChange],
+  );
+
+  const onConnect = useCallback(
+    (params) => {
+      const newEdges = addEdge(params, edges);
+      setEdges(newEdges);
+      onSchemaChange({ nodes, edges: newEdges });
+    },
+    [edges, nodes, onSchemaChange],
   );
 
   const onCloseContextMenu = useCallback(() => {
@@ -80,15 +98,19 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     }
   }, [contextMenu.show, onCloseContextMenu]);
 
-  const onCreateNode = useCallback(({ x, y }) => {
+  const onCreateNode = useCallback(({ x, y, nodeType }) => {
     // Преобразуем координаты экрана в координаты потока с учетом зума и панорамирования
     const position = screenToFlowPosition({ x, y });
     
     const newNode = {
       id: `node-${Date.now()}`,
-      type: 'default',
+      type: nodeType,
       position,
-      data: { label: 'Новая нода' }
+      data: { 
+        label: nodeType === 'inputNode' ? 'Input' : 
+               nodeType === 'outputNode' ? 'Output' : 
+               'Population'
+      }
     };
     const newNodes = [...nodes, newNode];
     setNodes(newNodes);
@@ -100,12 +122,18 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       <ReactFlow 
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
         onContextMenu={onContextMenu}
         onPaneClick={onPaneClick}
         onMove={onMove}
         onClick={onPaneClick}
+        connectOnClick={true}
+        nodesDraggable={true}
+        nodesConnectable={true}
+        elementsSelectable={true}
       >
         <Background />
         <Controls showZoom={false} showInteractive={false} />

@@ -2,9 +2,9 @@ import React from 'react';
 import './ContextMenu.css';
 
 const ContextMenu = ({ x, y, onClose, onCreateNode, onMouseLeave }) => {
-  const handleClick = (e) => {
+  const handleCreateNode = (nodeType) => (e) => {
     e.stopPropagation();
-    onCreateNode({ x, y });
+    onCreateNode({ x, y, nodeType });
     onClose();
   };
 
@@ -20,9 +20,21 @@ const ContextMenu = ({ x, y, onClose, onCreateNode, onMouseLeave }) => {
     >
       <button 
         className="context-menu-item"
-        onClick={handleClick}
+        onClick={handleCreateNode('inputNode')}
       >
-        Создать ноду
+        Создать входную ноду
+      </button>
+      <button 
+        className="context-menu-item"
+        onClick={handleCreateNode('outputNode')}
+      >
+        Создать выходную ноду
+      </button>
+      <button 
+        className="context-menu-item"
+        onClick={handleCreateNode('populationNode')}
+      >
+        Создать ноду популяции
       </button>
     </div>
   );
