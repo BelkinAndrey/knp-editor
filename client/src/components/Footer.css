@@ -1,0 +1,17 @@
+.footer {
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  padding: 0.25rem;
+  margin-top: auto;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.footer-content {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1;
+} 
