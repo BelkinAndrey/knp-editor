@@ -20,7 +20,7 @@ const PopulationNode = ({ data, selected }) => {
       <Handle
         type="target"
         position={Position.Left}
-        style={{ background: '#555' }}
+        style={{ background: '#555', width: 10, height: 10, borderRadius: '2px' }}
       />
       <div style={{ fontWeight: 'bold' }}>
         {data.label || 'Популяция'}
@@ -28,7 +28,7 @@ const PopulationNode = ({ data, selected }) => {
       <Handle
         type="source"
         position={Position.Right}
-        style={{ background: '#555' }}
+        style={{ background: '#555', width: 10, height: 10, borderRadius: '2px' }}
       />
     </div>
   );

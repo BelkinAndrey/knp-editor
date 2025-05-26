@@ -117,7 +117,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
 
   const onConnect = useCallback(
     (params) => {
-      const newEdges = addEdge(params, edges);
+      const newEdges = addEdge({ ...params, animated: true }, edges);
       setEdges(newEdges);
       const viewport = getViewport();
       // Call onSchemaChange to update the parent state and trigger save effect
@@ -225,6 +225,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         nodesDraggable={true}
         nodesConnectable={true}
         elementsSelectable={true}
+        selectNodesOnDrag={true}
+        deleteKeyCode="Delete"
       >
         <Background />
         <Controls showZoom={false} showInteractive={false} />

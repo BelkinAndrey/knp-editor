@@ -15,7 +15,7 @@ const OutputNode = ({ data, selected }) => {
       <Handle
         type="target"
         position={Position.Left}
-        style={{ background: '#555' }}
+        style={{ background: '#555', width: 10, height: 10, borderRadius: '2px' }}
       />
       <div>
         {data.label || 'Выход'}

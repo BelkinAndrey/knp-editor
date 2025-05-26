@@ -16,7 +16,7 @@ const InputNode = ({ data, selected }) => {
       <Handle
         type="source"
         position={Position.Right}
-        style={{ background: '#555' }}
+        style={{ background: '#555', width: 10, height: 10, borderRadius: '2px' }}
       />
     </div>
   );
