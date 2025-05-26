@@ -72,12 +72,6 @@
   z-index: 1;
 }
 
-.react-flow__node:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-  border-color: var(--accent-color);
-}
-
-
 
 .react-flow__handle {
   width: 8px;

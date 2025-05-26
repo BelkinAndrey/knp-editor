@@ -21,6 +21,13 @@ const Scheme = mongoose.model('Scheme', new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 }));
 
+const SchemaAutoSave = mongoose.model('autosave', new mongoose.Schema({
+  nodes: Array,
+  edges: Array,
+  zoom: Number,
+  position: Array
+}));
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -47,6 +54,33 @@ app.delete('/api/schemes/:id', async (req, res) => {
   } catch (error) {
     console.error('Ошибка при удалении схемы:', error);
     res.status(500).send({ message: 'Ошибка при удалении схемы' });
+  }
+});
+
+app.post('/api/autosave', async (req, res) => {
+  try {
+    const autoSaveData = req.body;
+    // Находим и обновляем (или создаем, если не существует) единственный документ автосохранения
+    const result = await SchemaAutoSave.findOneAndUpdate({}, autoSaveData, { upsert: true, new: true });
+    res.status(200).send(result);
+  } catch (error) {
+    console.error('Ошибка при автосохранении схемы:', error);
+    res.status(500).send({ message: 'Ошибка при автосохранении схемы' });
+  }
+});
+
+app.get('/api/autosave', async (req, res) => {
+  try {
+    // Находим единственный документ автосохранения
+    const autoSaveData = await SchemaAutoSave.findOne({});
+    if (!autoSaveData) {
+      // Если документ не найден (первое сохранение)
+      return res.status(404).send({ message: 'Данные автосохранения не найдены' });
+    }
+    res.status(200).send(autoSaveData);
+  } catch (error) {
+    console.error('Ошибка при получении данных автосохранения:', error);
+    res.status(500).send({ message: 'Ошибка при получении данных автосохранения' });
   }
 });
 
