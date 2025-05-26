@@ -1,7 +1,7 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 
-const PopulationNode = ({ data }) => {
+const PopulationNode = ({ data, selected }) => {
   return (
     <div style={{ 
       padding: '20px',
@@ -13,7 +13,9 @@ const PopulationNode = ({ data }) => {
       alignItems: 'center',
       justifyContent: 'center',
       textAlign: 'center',
-      background: 'var(--bg-secondary)'
+      background: 'var(--bg-secondary)',
+      boxShadow: selected ? '0 0 0 3px var(--accent-color)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
+      borderColor: selected ? 'var(--accent-color)' : 'var(--border-color)'
     }}>
       <Handle
         type="target"

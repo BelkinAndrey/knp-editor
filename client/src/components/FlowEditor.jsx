@@ -5,6 +5,7 @@ import ContextMenu from './ContextMenu';
 import InputNode from '../elements/InputNode';
 import OutputNode from '../elements/OutputNode';
 import PopulationNode from '../elements/PopulationNode';
+import axios from 'axios';
 
 const nodeTypes = {
   inputNode: InputNode,
@@ -16,7 +17,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const [nodes, setNodes] = useState(currentSchema.nodes);
   const [edges, setEdges] = useState(currentSchema.edges);
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0 });
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, toObject, setViewport } = useReactFlow();
 
   useEffect(() => {
     setNodes(currentSchema.nodes);
@@ -26,8 +27,13 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const onNodesChange = useCallback(
     (changes) => {
       const newNodes = applyNodeChanges(changes, nodes);
+      // Filter out edges connected to removed nodes
+      const nodeIds = newNodes.map(node => node.id);
+      const newEdges = edges.filter(edge => nodeIds.includes(edge.source) && nodeIds.includes(edge.target));
+
       setNodes(newNodes);
-      onSchemaChange({ nodes: newNodes, edges });
+      setEdges(newEdges); // Update edges state
+      onSchemaChange({ nodes: newNodes, edges: newEdges }); // Pass updated edges
     },
     [nodes, edges, onSchemaChange],
   );
@@ -116,6 +122,62 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     setNodes(newNodes);
     onSchemaChange({ nodes: newNodes, edges });
   }, [nodes, edges, onSchemaChange, screenToFlowPosition]);
+
+  // Function to save autosave data
+  const saveAutosave = useCallback(async () => {
+    if (!toObject) return; // Ensure React Flow instance is available
+    const flowObject = toObject();
+    try {
+      await axios.post('http://localhost:3000/api/autosave', {
+        nodes: flowObject.nodes,
+        edges: flowObject.edges,
+        zoom: flowObject.viewport.zoom,
+        position: { x: flowObject.viewport.x, y: flowObject.viewport.y }
+      });
+      console.log('Autosave successful!');
+    } catch (error) {
+      console.error('Error saving autosave:', error);
+    }
+  }, [toObject]);
+
+  // Effect to load autosave data on mount
+  useEffect(() => {
+    const loadAutosave = async () => {
+      try {
+        const response = await axios.get('http://localhost:3000/api/autosave');
+        const autosaveData = response.data;
+        if (autosaveData) {
+          setNodes(autosaveData.nodes || []);
+          setEdges(autosaveData.edges || []);
+          if (autosaveData.zoom !== undefined && autosaveData.position) {
+            setViewport({ x: autosaveData.position.x, y: autosaveData.position.y, zoom: autosaveData.zoom });
+          }
+          // Notify parent component if necessary, or handle state update internally
+          // onSchemaChange({ nodes: autosaveData.nodes || [], edges: autosaveData.edges || [] }); // Uncomment if you want to update parent state
+        }
+      } catch (error) {
+        console.error('Error loading autosave:', error);
+        // Handle 404 - no autosave data found (this is expected on first load)
+        if (error.response && error.response.status === 404) {
+          console.log('No autosave data found.');
+        } else {
+          alert('Failed to load autosave data.');
+        }
+      }
+    };
+
+    loadAutosave();
+  }, [setNodes, setEdges, setViewport]);
+
+  // Effect for periodic autosave
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      saveAutosave();
+    }, 30000); // Save every 30 seconds
+
+    // Clear interval on component unmount
+    return () => clearInterval(intervalId);
+  }, [saveAutosave]);
 
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-primary)' }}>

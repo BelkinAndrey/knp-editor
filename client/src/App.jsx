@@ -12,11 +12,16 @@ function App() {
     setCurrentSchema(schema);
   }, []);
 
+  const handleClearCanvas = useCallback(() => {
+    setCurrentSchema({ nodes: [], edges: [] });
+  }, []);
+
   return (
     <div className="app">
       <Header 
         currentSchema={currentSchema}
         onLoadSchema={handleLoadSchema}
+        onClearCanvas={handleClearCanvas}
       />
       <main className="main-content">
         <FlowEditor 
