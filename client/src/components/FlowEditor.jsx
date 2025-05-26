@@ -5,7 +5,6 @@ import ContextMenu from './ContextMenu';
 import InputNode from '../elements/InputNode';
 import OutputNode from '../elements/OutputNode';
 import PopulationNode from '../elements/PopulationNode';
-import axios from 'axios';
 
 const nodeTypes = {
   inputNode: InputNode,
@@ -17,43 +16,45 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const [nodes, setNodes] = useState(currentSchema.nodes);
   const [edges, setEdges] = useState(currentSchema.edges);
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0 });
-  const { screenToFlowPosition, toObject, setViewport } = useReactFlow();
+  const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
 
   useEffect(() => {
     setNodes(currentSchema.nodes);
     setEdges(currentSchema.edges);
-  }, [currentSchema]);
+    // Set viewport if position and zoom are available in currentSchema
+    if (currentSchema.position !== undefined && currentSchema.zoom !== undefined) {
+      setViewport({ x: currentSchema.position[0], y: currentSchema.position[1], zoom: currentSchema.zoom });
+    }
+  }, [currentSchema, setViewport]);
 
   const onNodesChange = useCallback(
     (changes) => {
       const newNodes = applyNodeChanges(changes, nodes);
-      // Filter out edges connected to removed nodes
-      const nodeIds = newNodes.map(node => node.id);
-      const newEdges = edges.filter(edge => nodeIds.includes(edge.source) && nodeIds.includes(edge.target));
-
       setNodes(newNodes);
-      setEdges(newEdges); // Update edges state
-      onSchemaChange({ nodes: newNodes, edges: newEdges }); // Pass updated edges
+      const viewport = getViewport();
+      onSchemaChange({ nodes: newNodes, edges, position: [viewport.x, viewport.y], zoom: viewport.zoom });
     },
-    [nodes, edges, onSchemaChange],
+    [nodes, edges, onSchemaChange, getViewport],
   );
 
   const onEdgesChange = useCallback(
     (changes) => {
       const newEdges = applyEdgeChanges(changes, edges);
       setEdges(newEdges);
-      onSchemaChange({ nodes, edges: newEdges });
+      const viewport = getViewport();
+      onSchemaChange({ nodes, edges: newEdges, position: [viewport.x, viewport.y], zoom: viewport.zoom });
     },
-    [nodes, edges, onSchemaChange],
+    [nodes, edges, onSchemaChange, getViewport],
   );
 
   const onConnect = useCallback(
     (params) => {
       const newEdges = addEdge(params, edges);
       setEdges(newEdges);
-      onSchemaChange({ nodes, edges: newEdges });
+      const viewport = getViewport();
+      onSchemaChange({ nodes, edges: newEdges, position: [viewport.x, viewport.y], zoom: viewport.zoom });
     },
-    [edges, nodes, onSchemaChange],
+    [edges, nodes, onSchemaChange, getViewport],
   );
 
   const onCloseContextMenu = useCallback(() => {
@@ -104,6 +105,17 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     }
   }, [contextMenu.show, onCloseContextMenu]);
 
+  const onMoveEnd = useCallback(() => {
+    // Capture viewport state after user finishes moving/zooming
+    const viewport = getViewport();
+    // Only update position and zoom, keep existing nodes and edges
+    onSchemaChange(prevSchema => ({
+      ...prevSchema,
+      position: [viewport.x, viewport.y],
+      zoom: viewport.zoom
+    }));
+  }, [onSchemaChange, getViewport]);
+
   const onCreateNode = useCallback(({ x, y, nodeType }) => {
     // Преобразуем координаты экрана в координаты потока с учетом зума и панорамирования
     const position = screenToFlowPosition({ x, y });
@@ -120,64 +132,9 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     };
     const newNodes = [...nodes, newNode];
     setNodes(newNodes);
-    onSchemaChange({ nodes: newNodes, edges });
-  }, [nodes, edges, onSchemaChange, screenToFlowPosition]);
-
-  // Function to save autosave data
-  const saveAutosave = useCallback(async () => {
-    if (!toObject) return; // Ensure React Flow instance is available
-    const flowObject = toObject();
-    try {
-      await axios.post('http://localhost:3000/api/autosave', {
-        nodes: flowObject.nodes,
-        edges: flowObject.edges,
-        zoom: flowObject.viewport.zoom,
-        position: { x: flowObject.viewport.x, y: flowObject.viewport.y }
-      });
-      console.log('Autosave successful!');
-    } catch (error) {
-      console.error('Error saving autosave:', error);
-    }
-  }, [toObject]);
-
-  // Effect to load autosave data on mount
-  useEffect(() => {
-    const loadAutosave = async () => {
-      try {
-        const response = await axios.get('http://localhost:3000/api/autosave');
-        const autosaveData = response.data;
-        if (autosaveData) {
-          setNodes(autosaveData.nodes || []);
-          setEdges(autosaveData.edges || []);
-          if (autosaveData.zoom !== undefined && autosaveData.position) {
-            setViewport({ x: autosaveData.position.x, y: autosaveData.position.y, zoom: autosaveData.zoom });
-          }
-          // Notify parent component if necessary, or handle state update internally
-          // onSchemaChange({ nodes: autosaveData.nodes || [], edges: autosaveData.edges || [] }); // Uncomment if you want to update parent state
-        }
-      } catch (error) {
-        console.error('Error loading autosave:', error);
-        // Handle 404 - no autosave data found (this is expected on first load)
-        if (error.response && error.response.status === 404) {
-          console.log('No autosave data found.');
-        } else {
-          alert('Failed to load autosave data.');
-        }
-      }
-    };
-
-    loadAutosave();
-  }, [setNodes, setEdges, setViewport]);
-
-  // Effect for periodic autosave
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      saveAutosave();
-    }, 30000); // Save every 30 seconds
-
-    // Clear interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [saveAutosave]);
+    const viewport = getViewport();
+    onSchemaChange({ nodes: newNodes, edges, position: [viewport.x, viewport.y], zoom: viewport.zoom });
+  }, [nodes, edges, onSchemaChange, screenToFlowPosition, getViewport]);
 
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
@@ -191,6 +148,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         onContextMenu={onContextMenu}
         onPaneClick={onPaneClick}
         onMove={onMove}
+        onMoveEnd={onMoveEnd}
         onClick={onPaneClick}
         connectOnClick={true}
         nodesDraggable={true}

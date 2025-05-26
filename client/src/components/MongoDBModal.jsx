@@ -56,7 +56,9 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
       const response = await axios.post(API_URL, {
         name: newFileName,
         nodes: currentSchema.nodes,
-        edges: currentSchema.edges
+        edges: currentSchema.edges,
+        zoom: currentSchema.zoom,
+        position: currentSchema.position
       });
 
       setNewFileName('');
@@ -134,6 +136,15 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
                             target: String(edge.target)
                           })) : []
                         };
+                        
+                        // Include zoom and position if they exist in the fetched schema
+                        if (schema.zoom !== undefined) {
+                          schemaData.zoom = schema.zoom;
+                        }
+                        if (schema.position !== undefined) {
+                          schemaData.position = schema.position;
+                        }
+
                         onLoadSchema(schemaData);
                         onClose();
                       } catch (error) {
