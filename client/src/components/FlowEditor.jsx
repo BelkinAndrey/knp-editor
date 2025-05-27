@@ -25,6 +25,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const [isPanelCollapsedState, setIsPanelCollapsedState] = useState(false); // Состояние свернуто/развернуто панели настроек
   const [panelWidthState, setPanelWidthState] = useState(300); // Состояние ширины панели настроек
   const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
+  const [lastMenuOpenTime, setLastMenuOpenTime] = useState(0);
 
   // Effect to load autosave data on mount
   useEffect(() => {
@@ -181,11 +182,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const onContextMenu = useCallback((event) => {
     event.preventDefault();
 
-    // Проверяем, был ли клик по контекстному меню
+    // Проверяем, был ли клик по контекстному меню или по панели настроек
     const isContextMenuClick = event.target.closest('.context-menu');
+    const isSettingsPanelClick = event.target.closest('.settings-panel-wrapper') || 
+                                event.target.closest('.settings-panel-container') ||
+                                event.target.closest('.settings-panel') ||
+                                event.target.closest('.settings-toggle-button');
 
-    if (isContextMenuClick) {
-      return; // Если клик был по меню, ничего не делаем
+    if (isContextMenuClick || isSettingsPanelClick) {
+      return; // Если клик был по меню или по панели настроек, ничего не делаем
     }
 
     // Если меню открыто, закрываем его
@@ -195,33 +200,28 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     }
 
     // Позиционируем меню под курсором
-    setContextMenu({ 
+    const newContextMenu = { 
       show: true, 
       x: event.clientX, 
       y: event.clientY 
-    });
+    };
+    setContextMenu(newContextMenu);
+    setLastMenuOpenTime(Date.now());
   }, [contextMenu.show, onCloseContextMenu]);
-
-  const onContextMenuMouseLeave = useCallback((event) => {
-    // Проверяем, что курсор действительно покинул меню
-    const relatedTarget = event.relatedTarget;
-    if (!relatedTarget || !relatedTarget.closest('.context-menu')) {
-      onCloseContextMenu();
-    }
-  }, [onCloseContextMenu]);
 
   const onPaneClick = useCallback(() => {
     if (contextMenu.show) {
       onCloseContextMenu();
     }
-    setSelectedElement(null); // Снимаем выделение при клике по панели
+    setSelectedElement(null);
   }, [contextMenu.show, onCloseContextMenu]);
 
   const onMove = useCallback(() => {
-    if (contextMenu.show) {
+    // Не закрываем меню, если оно было открыто менее 300мс назад
+    if (contextMenu.show && Date.now() - lastMenuOpenTime > 300) {
       onCloseContextMenu();
     }
-  }, [contextMenu.show, onCloseContextMenu]);
+  }, [contextMenu.show, onCloseContextMenu, lastMenuOpenTime]);
 
   const onMoveEnd = useCallback(() => {
     // Capture viewport state after user finishes moving/zooming
@@ -236,6 +236,14 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       panelWidth: panelWidthState // Сохраняем текущую ширину панели
     }));
   }, [onSchemaChange, getViewport, isPanelCollapsedState, panelWidthState]);
+
+  const onContextMenuMouseLeave = useCallback((event) => {
+    // Проверяем, что курсор действительно покинул меню
+    const relatedTarget = event.relatedTarget;
+    if (!relatedTarget || !relatedTarget.closest('.context-menu')) {
+      onCloseContextMenu();
+    }
+  }, [onCloseContextMenu]);
 
   const onCreateNode = useCallback(({ x, y, nodeType }) => {
     // Преобразуем координаты экрана в координаты потока с учетом зума и панорамирования
@@ -288,6 +296,21 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       panelWidth: panelWidth
     }));
   }, [onSchemaChange]);
+
+  // Обработчик для отслеживания кликов по документу
+  useEffect(() => {
+    const handleDocumentClick = (event) => {
+      // Проверяем, был ли клик вне контекстного меню
+      if (!event.target.closest('.context-menu') && contextMenu.show) {
+        onCloseContextMenu();
+      }
+    };
+
+    document.addEventListener('click', handleDocumentClick);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, [contextMenu.show, onCloseContextMenu]);
 
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
