@@ -21,7 +21,9 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const [edges, setEdges] = useState([]); // Initialize with empty array, load will populate
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0 });
   const [selectedElement, setSelectedElement] = useState(null); // Состояние для выбранного элемента
-  const [isPanelVisible, setIsPanelVisible] = useState(true); // Состояние видимости панели
+  const [isPanelVisible, setIsPanelVisible] = useState(true); // Состояние видимости панели (общее вкл/выкл)
+  const [isPanelCollapsedState, setIsPanelCollapsedState] = useState(false); // Состояние свернуто/развернуто панели настроек
+  const [panelWidthState, setPanelWidthState] = useState(300); // Состояние ширины панели настроек
   const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
 
   // Effect to load autosave data on mount
@@ -36,12 +38,19 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         if (loadedSchema.position !== undefined && loadedSchema.zoom !== undefined) {
           setViewport({ x: loadedSchema.position[0], y: loadedSchema.position[1], zoom: loadedSchema.zoom });
         }
+        // Загружаем состояние панели и ширину
+        setIsPanelCollapsedState(loadedSchema.isPanelCollapsed || false);
+        setPanelWidthState(loadedSchema.panelWidth || 300);
+
         // Also call onSchemaChange to update parent component's state if needed
         onSchemaChange({
+          name: loadedSchema.name, // Предполагается, что name тоже сохраняется
           nodes: loadedSchema.nodes || [],
           edges: loadedSchema.edges || [],
           position: loadedSchema.position || [0, 0],
-          zoom: loadedSchema.zoom || 1
+          zoom: loadedSchema.zoom || 1,
+          isPanelCollapsed: loadedSchema.isPanelCollapsed || false, // Передаем загруженное состояние
+          panelWidth: loadedSchema.panelWidth || 300 // Передаем загруженную ширину
         });
       } catch (error) {
         console.error('Error loading autosave data:', error);
@@ -50,11 +59,18 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           console.log('No autosave data found.');
           // Initialize with an empty schema if no autosave data
            onSchemaChange({
+            name: '', // Имя по умолчанию
             nodes: [],
             edges: [],
             position: [0, 0],
-            zoom: 1
+            zoom: 1,
+            isPanelCollapsed: false, // Состояние панели по умолчанию
+            panelWidth: 300 // Ширина панели по умолчанию
           });
+           // Устанавливаем начальные состояния панели и ширины
+           setIsPanelCollapsedState(false);
+           setPanelWidthState(300);
+
         } else {
           // Other errors should be logged or handled
           alert('Failed to load autosave data.');
@@ -69,6 +85,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const debouncedSave = useCallback(
     debounce(async (schemaToSave) => {
       try {
+        // В schemaToSave уже есть isPanelCollapsed и panelWidth благодаря onSchemaChange
         await axios.post('http://localhost:3000/api/autosave', schemaToSave);
       } catch (error) {
         console.error('Error saving autosave data:', error);
@@ -95,6 +112,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     if (currentSchema.position !== undefined && currentSchema.zoom !== undefined) {
         setViewport({ x: currentSchema.position[0], y: currentSchema.position[1], zoom: currentSchema.zoom });
     }
+    // Состояния панели и ширины теперь управляются загрузчиком и handleSavePanelSettings
+    // Раскомментируем и обновляем для загрузки из основных файлов
+    if (currentSchema.isPanelCollapsed !== undefined) {
+      setIsPanelCollapsedState(currentSchema.isPanelCollapsed);
+    }
+    if (currentSchema.panelWidth !== undefined) {
+      setPanelWidthState(currentSchema.panelWidth);
+    }
+
   }, [currentSchema, setViewport]);
 
   const onNodesChange = useCallback(
@@ -103,9 +129,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       setNodes(newNodes);
       const viewport = getViewport();
       // Call onSchemaChange to update the parent state and trigger save effect
-      onSchemaChange({ nodes: newNodes, edges, position: [viewport.x, viewport.y], zoom: viewport.zoom });
+      onSchemaChange({
+        ...currentSchema, // Сохраняем name, isPanelCollapsed, panelWidth
+        nodes: newNodes,
+        edges: edges,
+        position: [viewport.x, viewport.y],
+        zoom: viewport.zoom
+      });
     },
-    [nodes, edges, onSchemaChange, getViewport],
+    [nodes, edges, onSchemaChange, getViewport, currentSchema],
   );
 
   const onEdgesChange = useCallback(
@@ -114,9 +146,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       setEdges(newEdges);
       const viewport = getViewport();
       // Call onSchemaChange to update the parent state and trigger save effect
-      onSchemaChange({ nodes, edges: newEdges, position: [viewport.x, viewport.y], zoom: viewport.zoom });
+      onSchemaChange({
+        ...currentSchema, // Сохраняем name, isPanelCollapsed, panelWidth
+        nodes: nodes,
+        edges: newEdges,
+        position: [viewport.x, viewport.y],
+        zoom: viewport.zoom
+      });
     },
-    [nodes, edges, onSchemaChange, getViewport],
+    [nodes, edges, onSchemaChange, getViewport, currentSchema],
   );
 
   const onConnect = useCallback(
@@ -125,9 +163,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       setEdges(newEdges);
       const viewport = getViewport();
       // Call onSchemaChange to update the parent state and trigger save effect
-      onSchemaChange({ nodes, edges: newEdges, position: [viewport.x, viewport.y], zoom: viewport.zoom });
+      onSchemaChange({
+        ...currentSchema, // Сохраняем name, isPanelCollapsed, panelWidth
+        nodes: nodes,
+        edges: newEdges,
+        position: [viewport.x, viewport.y],
+        zoom: viewport.zoom
+      });
     },
-    [edges, nodes, onSchemaChange, getViewport],
+    [edges, nodes, onSchemaChange, getViewport, currentSchema],
   );
 
   const onCloseContextMenu = useCallback(() => {
@@ -187,9 +231,11 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     onSchemaChange(prevSchema => ({
       ...prevSchema,
       position: [viewport.x, viewport.y],
-      zoom: viewport.zoom
+      zoom: viewport.zoom,
+      isPanelCollapsed: isPanelCollapsedState, // Сохраняем текущее состояние панели
+      panelWidth: panelWidthState // Сохраняем текущую ширину панели
     }));
-  }, [onSchemaChange, getViewport]);
+  }, [onSchemaChange, getViewport, isPanelCollapsedState, panelWidthState]);
 
   const onCreateNode = useCallback(({ x, y, nodeType }) => {
     // Преобразуем координаты экрана в координаты потока с учетом зума и панорамирования
@@ -209,8 +255,14 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     setNodes(newNodes);
     const viewport = getViewport();
     // Call onSchemaChange to update the parent state and trigger save effect
-    onSchemaChange({ nodes: newNodes, edges, position: [viewport.x, viewport.y], zoom: viewport.zoom });
-  }, [nodes, edges, onSchemaChange, screenToFlowPosition, getViewport]);
+    onSchemaChange({
+      ...currentSchema, // Сохраняем name, isPanelCollapsed, panelWidth
+      nodes: newNodes,
+      edges: edges,
+      position: [viewport.x, viewport.y],
+      zoom: viewport.zoom
+    });
+  }, [nodes, edges, onSchemaChange, screenToFlowPosition, getViewport, currentSchema]);
 
   const onNodeClick = useCallback((event, node) => {
     setSelectedElement({ type: 'node', ...node });
@@ -225,6 +277,17 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const togglePanelVisibility = useCallback(() => {
     setIsPanelVisible(prev => !prev);
   }, []);
+
+  const handleSavePanelSettings = useCallback(({ isPanelCollapsed, panelWidth }) => {
+    setIsPanelCollapsedState(isPanelCollapsed);
+    setPanelWidthState(panelWidth);
+    // Обновляем схему с новыми значениями состояния панели и ширины
+    onSchemaChange(prevSchema => ({
+      ...prevSchema,
+      isPanelCollapsed: isPanelCollapsed,
+      panelWidth: panelWidth
+    }));
+  }, [onSchemaChange]);
 
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
@@ -251,15 +314,22 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       >
         <Background />
         <Controls showZoom={false} showInteractive={false} />
+        <SettingsPanel 
+          selectedElement={selectedElement}
+          isVisible={isPanelVisible}
+          onToggleVisibility={togglePanelVisibility}
+          initialPanelCollapsed={isPanelCollapsedState} // Передаем состояние свернуто/развернуто
+          initialPanelWidth={panelWidthState} // Передаем ширину
+          onSaveSettings={handleSavePanelSettings} // Передаем функцию сохранения
+        />
       </ReactFlow>
-      <SettingsPanel selectedElement={selectedElement} isVisible={isPanelVisible} onToggleVisibility={togglePanelVisibility} />
       {contextMenu.show && (
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={onCloseContextMenu}
           onCreateNode={onCreateNode}
-          onMouseLeave={onContextMenuMouseLeave}
+          onMouseLeave={onContextMenuMouseLeave} // Add mouseleave handler
         />
       )}
     </div>
@@ -269,10 +339,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
 const FlowEditor = ({ currentSchema, onSchemaChange }) => {
   return (
     <ReactFlowProvider>
-      <FlowEditorContent 
-        currentSchema={currentSchema}
-        onSchemaChange={onSchemaChange}
-      />
+      <FlowEditorContent currentSchema={currentSchema} onSchemaChange={onSchemaChange} />
     </ReactFlowProvider>
   );
 };

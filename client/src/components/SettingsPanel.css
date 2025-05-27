@@ -1,4 +1,4 @@
-.settings-panel-container {
+.settings-panel-wrapper {
   position: absolute;
   top: 20px;
   bottom: 20px;
@@ -7,21 +7,19 @@
   z-index: 10;
 }
 
-.settings-toggle-button {
-  position: absolute;
-  top: 0px; /* Располагаем кнопку в самом верху контейнера */
-  right: 0px; /* Располагаем кнопку справа */
-  z-index: 11; /* Кнопка должна быть выше панели */
-  padding: 5px 10px;
-  background-color: var(--bg-secondary); /* Измененный фон на --bg-secondary */
-  color: var(--text-primary); /* Примерный цвет текста */
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 0.8em;
+.settings-panel-wrapper.collapsed {
+  right: -320px; /* Сдвигаем панель за пределы видимой области */
+  /* Можно также использовать width: 0; overflow: hidden; в зависимости от реализации */
 }
 
-.settings-panel {
+.settings-panel-container {
+  /* Remove positioning styles */
+  /* position: absolute; */
+  /* top: 20px; */
+  /* bottom: 20px; */
+  /* right: 20px; */
+  /* width: 300px; */
+  /* z-index: 10; */
   /* Основные стили панели остаются, но теперь она внутри контейнера */
   padding: 15px;
   background-color: var(--bg-secondary);
@@ -30,6 +28,21 @@
   width: 100%; /* Панель занимает всю ширину контейнера */
   height: 100%; /* Панель занимает всю высоту контейнера */
   box-sizing: border-box; /* Учитываем padding в размере */
+}
+
+.settings-toggle-button {
+  position: absolute;
+  top: 20px; /* Отступ сверху */
+  right: 20px; /* Отступ справа */
+  left: auto; /* Убираем left: 0px */
+  z-index: 11; /* Кнопка должна быть выше панели */
+  padding: 5px 10px;
+  background-color: var(--bg-secondary); /* Измененный фон на --bg-secondary */
+  color: var(--text-primary); /* Примерный цвет текста */
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.8em;
 }
 
 .settings-panel h2 {

@@ -18,6 +18,8 @@ const Scheme = mongoose.model('Scheme', new mongoose.Schema({
   edges: Array,
   zoom: Number,
   position: Array,
+  isPanelCollapsed: Boolean,
+  panelWidth: Number,
   createdAt: { type: Date, default: Date.now }
 }));
 
@@ -25,7 +27,9 @@ const SchemaAutoSave = mongoose.model('autosave', new mongoose.Schema({
   nodes: Array,
   edges: Array,
   zoom: Number,
-  position: Array
+  position: Array,
+  isPanelCollapsed: Boolean,
+  panelWidth: Number
 }));
 
 // Middleware

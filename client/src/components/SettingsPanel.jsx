@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './SettingsPanel.css'; // Импорт стилей для панели настроек и кнопки
 
-const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility }) => {
-  const [panelWidth, setPanelWidth] = useState(300); // Начальная ширина панели
+const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings }) => {
+  const [panelWidth, setPanelWidth] = useState(initialPanelWidth); // Начальная ширина панели из пропсов
   const [isResizing, setIsResizing] = useState(false);
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(initialPanelCollapsed); // Состояние свернуто/развернуто
   const panelRef = useRef(null);
 
   const handleMouseDown = (e) => {
@@ -20,6 +21,10 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility }) => {
 
   const handleMouseUp = () => {
     setIsResizing(false);
+    // Сохраняем ширину панели после изменения размера
+    if (onSaveSettings) {
+      onSaveSettings({ isPanelCollapsed, panelWidth });
+    }
   };
 
   useEffect(() => {
@@ -30,45 +35,71 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility }) => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing]); // Переподключайте эффекты только при изменении состояния isResizing
+  }, [isResizing, panelWidth, isPanelCollapsed]); // Добавляем зависимости panelWidth и isPanelCollapsed
+
+  // Эффект для установки начальной ширины и состояния при загрузке
+  useEffect(() => {
+    setPanelWidth(initialPanelWidth);
+    setIsPanelCollapsed(initialPanelCollapsed);
+  }, [initialPanelWidth, initialPanelCollapsed]);
+
+  const handleToggleCollapse = () => {
+    const newCollapsedState = !isPanelCollapsed;
+    setIsPanelCollapsed(newCollapsedState);
+    // Сохраняем состояние свернуто/развернуто
+    if (onSaveSettings) {
+      onSaveSettings({ isPanelCollapsed: newCollapsedState, panelWidth });
+    }
+  };
 
   return (
-    <div className="settings-panel-container" style={{ width: panelWidth + 'px' }} ref={panelRef}>
-      <button className="settings-toggle-button" onClick={onToggleVisibility}>
-        {isVisible ? '▼' : '▲'}
-      </button>
+    <>
+      {/* Кнопка для сворачивания/разворачивания */}
       {isVisible && (
-        <div className="settings-panel">
-          <h2>Settings</h2>
-          {selectedElement ? (
-            // If element is selected, display its settings
-            <>
-              <p>Selected element type: {selectedElement.type}</p>
-              {selectedElement.type === 'node' && (
-                <div>
-                  <p>Node ID: {selectedElement.id}</p>
-                  {/* Add fields for editing node settings */}
-                </div>
+        <button className="settings-toggle-button" onClick={handleToggleCollapse}>
+          {isPanelCollapsed ? '▲' : '▼'}
+        </button>
+      )}
+
+      {/* Основная панель настроек */}
+      {isVisible && (
+        <div className={`settings-panel-wrapper ${isPanelCollapsed ? 'collapsed' : ''}`} style={{ width: isPanelCollapsed ? '0px' : panelWidth + 'px' }}>
+          <div className="settings-panel-container" style={{ pointerEvents: isVisible && !isPanelCollapsed ? 'auto' : 'none' }} ref={panelRef}>
+            <div className="settings-panel">
+              <h2>Settings</h2>
+              {selectedElement ? (
+                // If element is selected, display its settings
+                <>
+                  <p>Selected element type: {selectedElement.type}</p>
+                  {selectedElement.type === 'node' && (
+                    <div>
+                      <p>Node ID: {selectedElement.id}</p>
+                      {/* Add fields for editing node settings */}
+                    </div>
+                  )}
+                  {selectedElement.type === 'edge' && (
+                    <div>
+                      <p>Edge ID: {selectedElement.id}</p>
+                      {/* Add fields for editing edge settings */}
+                    </div>
+                  )}
+                </>
+              ) : (
+                // If no element is selected, display message
+                <p>Select a node or edge to view settings.</p>
               )}
-              {selectedElement.type === 'edge' && (
-                <div>
-                  <p>Edge ID: {selectedElement.id}</p>
-                  {/* Add fields for editing edge settings */}
-                </div>
-              )}
-            </>
-          ) : (
-            // If no element is selected, display message
-            <p>Select a node or edge to view settings.</p>
-          )}
+            </div>
+            {/* Ручка изменения размера видна только когда панель развернута */}
+            {!isPanelCollapsed && (
+              <div
+                className="resize-handle"
+                onMouseDown={handleMouseDown}
+              ></div>
+            )}
+          </div>
         </div>
       )}
-      {/* Ручка изменения размера */}
-      <div
-        className="resize-handle"
-        onMouseDown={handleMouseDown}
-      ></div>
-    </div>
+    </>
   );
 };
 
