@@ -8,21 +8,27 @@
 }
 
 .context-menu-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  padding: 8px 16px;
+  padding: 8px 12px;
   border: none;
   background: none;
-  color: var(--text-primary);
   text-align: left;
   cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
 }
 
 .context-menu-item:hover {
   background-color: var(--accent-color);
   color: white;
+}
+
+.context-menu-item::before {
+  content: attr(data-icon);
+  font-size: 1.2em;
+  min-width: 1.5em;
+  text-align: center;
 }
 
 .context-menu-item:first-child {

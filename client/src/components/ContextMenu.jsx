@@ -20,21 +20,24 @@ const ContextMenu = ({ x, y, onClose, onCreateNode, onMouseLeave }) => {
     >
       <button 
         className="context-menu-item"
-        onClick={handleCreateNode('inputNode')}
+        onClick={handleCreateNode('populationNode')}
+        data-icon="⭘"
       >
-        Создать входную ноду
+        Population 
+      </button>
+      <button 
+        className="context-menu-item"
+        onClick={handleCreateNode('inputNode')}
+        data-icon="⇥"
+      >
+        Input 
       </button>
       <button 
         className="context-menu-item"
         onClick={handleCreateNode('outputNode')}
+        data-icon="↦"
       >
-        Создать выходную ноду
-      </button>
-      <button 
-        className="context-menu-item"
-        onClick={handleCreateNode('populationNode')}
-      >
-        Создать ноду популяции
+        Output 
       </button>
     </div>
   );

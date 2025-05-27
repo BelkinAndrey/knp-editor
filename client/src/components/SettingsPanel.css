@@ -27,12 +27,37 @@
   background-color: var(--bg-secondary);
   border-radius: 10px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  /* Убираем абсолютное позиционирование, так как контейнер его обеспечивает */
-  /* position: absolute; */
-  /* top: 20px; */
-  /* bottom: 20px; */
-  /* right: 20px; */
   width: 100%; /* Панель занимает всю ширину контейнера */
   height: 100%; /* Панель занимает всю высоту контейнера */
   box-sizing: border-box; /* Учитываем padding в размере */
+}
+
+.settings-panel h2 {
+  font-size: 1.1rem;
+  font-weight: 400;
+  margin: 0 0 15px 0;
+  color: var(--text-primary);
+}
+
+.settings-panel p {
+  font-size: 0.85rem;
+  font-weight: 300;
+  margin: 8px 0;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.settings-panel div {
+  margin: 10px 0;
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 5px; /* Ширина ручки изменения размера */
+  cursor: ew-resize; /* Курсор изменения размера восток-запад */
+  background-color: transparent; /* Сделайте ручку невидимой */
+  z-index: 1; /* Убедитесь, что ручка находится поверх другого содержимого */
 } 
