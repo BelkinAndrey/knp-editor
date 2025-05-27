@@ -1,0 +1,38 @@
+.settings-panel-container {
+  position: absolute;
+  top: 20px;
+  bottom: 20px;
+  right: 20px;
+  width: 300px;
+  z-index: 10;
+}
+
+.settings-toggle-button {
+  position: absolute;
+  top: 0px; /* Располагаем кнопку в самом верху контейнера */
+  right: 0px; /* Располагаем кнопку справа */
+  z-index: 11; /* Кнопка должна быть выше панели */
+  padding: 5px 10px;
+  background-color: var(--bg-secondary); /* Измененный фон на --bg-secondary */
+  color: var(--text-primary); /* Примерный цвет текста */
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.8em;
+}
+
+.settings-panel {
+  /* Основные стили панели остаются, но теперь она внутри контейнера */
+  padding: 15px;
+  background-color: var(--bg-secondary);
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  /* Убираем абсолютное позиционирование, так как контейнер его обеспечивает */
+  /* position: absolute; */
+  /* top: 20px; */
+  /* bottom: 20px; */
+  /* right: 20px; */
+  width: 100%; /* Панель занимает всю ширину контейнера */
+  height: 100%; /* Панель занимает всю высоту контейнера */
+  box-sizing: border-box; /* Учитываем padding в размере */
+} 

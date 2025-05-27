@@ -7,6 +7,8 @@ import OutputNode from '../elements/OutputNode';
 import PopulationNode from '../elements/PopulationNode';
 import axios from 'axios';
 import { debounce } from 'lodash'; // Assuming lodash is available, or we can implement a simple debounce
+import SettingsPanel from './SettingsPanel';
+import './FlowEditor.css'; // Импорт стилей
 
 const nodeTypes = {
   inputNode: InputNode,
@@ -18,6 +20,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const [nodes, setNodes] = useState([]); // Initialize with empty array, load will populate
   const [edges, setEdges] = useState([]); // Initialize with empty array, load will populate
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0 });
+  const [selectedElement, setSelectedElement] = useState(null); // Состояние для выбранного элемента
+  const [isPanelVisible, setIsPanelVisible] = useState(true); // Состояние видимости панели
   const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
 
   // Effect to load autosave data on mount
@@ -166,6 +170,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     if (contextMenu.show) {
       onCloseContextMenu();
     }
+    setSelectedElement(null); // Снимаем выделение при клике по панели
   }, [contextMenu.show, onCloseContextMenu]);
 
   const onMove = useCallback(() => {
@@ -207,8 +212,22 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     onSchemaChange({ nodes: newNodes, edges, position: [viewport.x, viewport.y], zoom: viewport.zoom });
   }, [nodes, edges, onSchemaChange, screenToFlowPosition, getViewport]);
 
+  const onNodeClick = useCallback((event, node) => {
+    setSelectedElement({ type: 'node', ...node });
+    onCloseContextMenu(); // Закрываем контекстное меню при выборе ноды
+  }, [onCloseContextMenu]);
+
+  const onEdgeClick = useCallback((event, edge) => {
+    setSelectedElement({ type: 'edge', ...edge });
+    onCloseContextMenu(); // Закрываем контекстное меню при выборе связи
+  }, [onCloseContextMenu]);
+
+  const togglePanelVisibility = useCallback(() => {
+    setIsPanelVisible(prev => !prev);
+  }, []);
+
   return (
-    <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-primary)' }}>
+    <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
       <ReactFlow 
         nodes={nodes}
         edges={edges}
@@ -221,6 +240,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         onMove={onMove}
         onMoveEnd={onMoveEnd}
         onClick={onPaneClick}
+        onNodeClick={onNodeClick}
+        onEdgeClick={onEdgeClick}
         connectOnClick={true}
         nodesDraggable={true}
         nodesConnectable={true}
@@ -231,6 +252,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         <Background />
         <Controls showZoom={false} showInteractive={false} />
       </ReactFlow>
+      <SettingsPanel selectedElement={selectedElement} isVisible={isPanelVisible} onToggleVisibility={togglePanelVisibility} />
       {contextMenu.show && (
         <ContextMenu
           x={contextMenu.x}
