@@ -209,11 +209,24 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     setLastMenuOpenTime(Date.now());
   }, [contextMenu.show, onCloseContextMenu]);
 
-  const onPaneClick = useCallback(() => {
+  const onPaneClick = useCallback((event) => {
+    // Проверяем, был ли клик по узлу или ребру
+    const isNodeClick = event.target.closest('.react-flow__node');
+    const isEdgeClick = event.target.closest('.react-flow__edge');
+    const isSettingsPanelClick = event.target.closest('.settings-panel-wrapper') || 
+                                event.target.closest('.settings-panel-container') ||
+                                event.target.closest('.settings-panel') ||
+                                event.target.closest('.settings-toggle-button');
+
+    // Если клик был по узлу, ребру или панели настроек, не очищаем selectedElement
+    if (isNodeClick || isEdgeClick || isSettingsPanelClick) {
+      return;
+    }
+
     if (contextMenu.show) {
       onCloseContextMenu();
     }
-    setSelectedElement(null);
+    setSelectedElement(() => null);
   }, [contextMenu.show, onCloseContextMenu]);
 
   const onMove = useCallback(() => {
@@ -273,13 +286,37 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   }, [nodes, edges, onSchemaChange, screenToFlowPosition, getViewport, currentSchema]);
 
   const onNodeClick = useCallback((event, node) => {
-    setSelectedElement({ type: 'node', ...node });
-    onCloseContextMenu(); // Закрываем контекстное меню при выборе ноды
+    // Определяем тип узла на основе его type
+    const nodeType = node.type === 'inputNode' ? 'input' :
+                    node.type === 'outputNode' ? 'output' :
+                    node.type === 'populationNode' ? 'population' : 'node';
+    
+    // Создаем новый объект, не модифицируя оригинальный node
+    const newSelectedElement = {
+      type: nodeType,
+      id: node.id,
+      data: node.data,
+      position: node.position,
+      width: node.width,
+      height: node.height
+    };
+    
+    setSelectedElement(() => newSelectedElement);
+    onCloseContextMenu();
   }, [onCloseContextMenu]);
 
   const onEdgeClick = useCallback((event, edge) => {
-    setSelectedElement({ type: 'edge', ...edge });
-    onCloseContextMenu(); // Закрываем контекстное меню при выборе связи
+    // Создаем новый объект, не модифицируя оригинальный edge
+    const newSelectedElement = {
+      type: 'edge',
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      animated: edge.animated
+    };
+    
+    setSelectedElement(() => newSelectedElement);
+    onCloseContextMenu();
   }, [onCloseContextMenu]);
 
   const togglePanelVisibility = useCallback(() => {
@@ -312,6 +349,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     };
   }, [contextMenu.show, onCloseContextMenu]);
 
+
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
       <ReactFlow 
@@ -325,7 +363,6 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         onPaneClick={onPaneClick}
         onMove={onMove}
         onMoveEnd={onMoveEnd}
-        onClick={onPaneClick}
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         connectOnClick={true}
@@ -338,12 +375,13 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         <Background />
         <Controls showZoom={false} showInteractive={false} />
         <SettingsPanel 
+          key={`settings-panel-${selectedElement?.id || 'none'}`}
           selectedElement={selectedElement}
           isVisible={isPanelVisible}
           onToggleVisibility={togglePanelVisibility}
-          initialPanelCollapsed={isPanelCollapsedState} // Передаем состояние свернуто/развернуто
-          initialPanelWidth={panelWidthState} // Передаем ширину
-          onSaveSettings={handleSavePanelSettings} // Передаем функцию сохранения
+          initialPanelCollapsed={isPanelCollapsedState}
+          initialPanelWidth={panelWidthState}
+          onSaveSettings={handleSavePanelSettings}
         />
       </ReactFlow>
       {contextMenu.show && (
@@ -352,7 +390,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           y={contextMenu.y}
           onClose={onCloseContextMenu}
           onCreateNode={onCreateNode}
-          onMouseLeave={onContextMenuMouseLeave} // Add mouseleave handler
+          onMouseLeave={onContextMenuMouseLeave}
         />
       )}
     </div>

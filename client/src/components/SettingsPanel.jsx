@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './SettingsPanel.css'; // Импорт стилей для панели настроек и кнопки
 
 const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings }) => {
@@ -7,6 +7,82 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(initialPanelCollapsed); // Состояние свернуто/развернуто
   const panelRef = useRef(null);
 
+  // Мемоизируем отображение типа элемента
+  const elementTypeDisplay = useMemo(() => {
+    if (!selectedElement) {
+      return '';
+    }
+    
+    const typeMap = {
+      'edge': 'Edge',
+      'population': 'Population',
+      'input': 'Input',
+      'output': 'Output'
+    };
+    
+    return typeMap[selectedElement.type] || selectedElement.type;
+  }, [selectedElement]);
+
+  // Мемоизируем содержимое панели
+  const panelContent = useMemo(() => {
+    if (!selectedElement) {
+      return <p>Выберите элемент для просмотра настроек</p>;
+    }
+
+    return (
+      <div className="element-settings">
+        <div className="setting-item">
+          <span className="setting-label">Тип элемента:</span>
+          <span className="setting-value">{elementTypeDisplay}</span>
+        </div>
+        <div className="setting-item">
+          <span className="setting-label">ID:</span>
+          <span className="setting-value">{selectedElement.id}</span>
+        </div>
+        {selectedElement.type === 'edge' && (
+          <div className="edge-settings">
+            <div className="setting-item">
+              <span className="setting-label">Источник:</span>
+              <span className="setting-value">{selectedElement.source}</span>
+            </div>
+            <div className="setting-item">
+              <span className="setting-label">Цель:</span>
+              <span className="setting-value">{selectedElement.target}</span>
+            </div>
+          </div>
+        )}
+        {selectedElement.type === 'population' && (
+          <div className="population-settings">
+            <div className="setting-item">
+              <span className="setting-label">Метка:</span>
+              <span className="setting-value">{selectedElement.data?.label || 'Популяция'}</span>
+            </div>
+          </div>
+        )}
+        {selectedElement.type === 'input' && (
+          <div className="input-settings">
+            <div className="setting-item">
+              <span className="setting-label">Метка:</span>
+              <span className="setting-value">{selectedElement.data?.label || 'Вход'}</span>
+            </div>
+          </div>
+        )}
+        {selectedElement.type === 'output' && (
+          <div className="output-settings">
+            <div className="setting-item">
+              <span className="setting-label">Метка:</span>
+              <span className="setting-value">{selectedElement.data?.label || 'Выход'}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }, [selectedElement, elementTypeDisplay]);
+
+  // Добавим эффект для отслеживания изменений пропсов
+  useEffect(() => {
+  }, [selectedElement, isVisible, initialPanelCollapsed, initialPanelWidth]);
+
   const handleMouseDown = (e) => {
     setIsResizing(true);
   };
@@ -14,7 +90,6 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const handleMouseMove = (e) => {
     if (!isResizing) return;
     const newWidth = document.body.clientWidth - e.clientX;
-    // Ограничьте ширину, если это необходимо (например, мин/макс ширина)
     const minWidth = 300; // Минимальная ширина панели
     setPanelWidth(Math.max(minWidth, newWidth));
   };
@@ -66,28 +141,8 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
         <div className={`settings-panel-wrapper ${isPanelCollapsed ? 'collapsed' : ''}`} style={{ width: isPanelCollapsed ? '0px' : panelWidth + 'px' }}>
           <div className="settings-panel-container" style={{ pointerEvents: isVisible && !isPanelCollapsed ? 'auto' : 'none' }} ref={panelRef}>
             <div className="settings-panel">
-              <h2>Settings</h2>
-              {selectedElement ? (
-                // If element is selected, display its settings
-                <>
-                  <p>Selected element type: {selectedElement.type}</p>
-                  {selectedElement.type === 'node' && (
-                    <div>
-                      <p>Node ID: {selectedElement.id}</p>
-                      {/* Add fields for editing node settings */}
-                    </div>
-                  )}
-                  {selectedElement.type === 'edge' && (
-                    <div>
-                      <p>Edge ID: {selectedElement.id}</p>
-                      {/* Add fields for editing edge settings */}
-                    </div>
-                  )}
-                </>
-              ) : (
-                // If no element is selected, display message
-                <p>Select a node or edge to view settings.</p>
-              )}
+              <h2>Настройки</h2>
+              {panelContent}
             </div>
             {/* Ручка изменения размера видна только когда панель развернута */}
             {!isPanelCollapsed && (
@@ -103,4 +158,4 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   );
 };
 
-export default SettingsPanel; 
+export default React.memo(SettingsPanel); // Мемоизируем весь компонент 
