@@ -18,7 +18,8 @@ const PopulationNode = ({ data, selected }) => {
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
         fontSize: '1.1em',
-        textAlign: 'center'
+        textAlign: 'center',
+        color: data.color || 'var(--text-color)'
       }}>
         {data.label}
       </div>
@@ -36,7 +37,7 @@ const PopulationNode = ({ data, selected }) => {
         boxShadow: selected ? '0 0 0 3px var(--accent-color)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
         borderColor: selected ? 'var(--accent-color)' : 'var(--border-color)',
         position: 'relative',
-        '--population-dots-color': 'var(--text-color,rgb(103, 100, 100))'
+        '--population-dots-color': data.color || 'var(--text-color,rgb(103, 100, 100))'
       }}>
         <Handle
           type="target"

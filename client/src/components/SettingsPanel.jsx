@@ -8,6 +8,18 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const panelRef = useRef(null);
   const [populationLabel, setPopulationLabel] = useState(''); // State for population label input
   const [populationColor, setPopulationColor] = useState('#000000'); // Добавляем состояние для цвета
+  
+  // Добавляем массив предустановленных цветов
+  const presetColors = [
+    '#FFFFFF', // белый
+    '#FF0000', // красный
+    '#00FF00', // зеленый
+    '#0000FF', // синий
+    '#FFFF00', // желтый
+    '#FF00FF', // пурпурный
+    '#00FFFF', // голубой
+    '#808080', // серый
+  ];
 
   // Memoize element type display
   const elementTypeDisplay = useMemo(() => {
@@ -60,18 +72,39 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
             </div>
             <div className="setting-item">
               <span className="setting-label">Color:</span>
-              <input
-                type="color"
-                value={populationColor}
-                onChange={(e) => {
-                  const newColor = e.target.value;
-                  setPopulationColor(newColor);
-                  if (onElementSettingsChange && selectedElement) {
-                    onElementSettingsChange(selectedElement.id, { color: newColor });
-                  }
-                }}
-                className="settings-panel-color-input"
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="color"
+                  value={populationColor}
+                  onChange={(e) => {
+                    const newColor = e.target.value;
+                    setPopulationColor(newColor);
+                    if (onElementSettingsChange && selectedElement) {
+                      onElementSettingsChange(selectedElement.id, { color: newColor });
+                    }
+                  }}
+                  className="settings-panel-color-input"
+                />
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: '4px' }}>(</span>
+                  {presetColors.map((color, index) => (
+                    <div
+                      key={color}
+                      onClick={() => handlePresetColorClick(color)}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        backgroundColor: color,
+                        border: '1px solid #ccc',
+                        cursor: 'pointer',
+                        margin: '0 2px',
+                      }}
+                      title={color}
+                    />
+                  ))}
+                  <span style={{ marginLeft: '4px' }}>)</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -135,6 +168,13 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     // Save collapsed/expanded state
     if (onSaveSettings) {
       onSaveSettings({ isPanelCollapsed: newCollapsedState, panelWidth });
+    }
+  };
+
+  const handlePresetColorClick = (color) => {
+    setPopulationColor(color);
+    if (onElementSettingsChange && selectedElement) {
+      onElementSettingsChange(selectedElement.id, { color });
     }
   };
 
