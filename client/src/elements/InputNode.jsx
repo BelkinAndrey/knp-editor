@@ -12,7 +12,9 @@ const InputNode = ({ data, selected }) => {
         boxShadow: selected ? '0 0 0 3px var(--accent-color)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
         borderColor: selected ? 'var(--accent-color)' : 'var(--border-color)'
       }}>
-      {data.label || 'Input'}
+      <div style={{ fontWeight: 300 }}>
+        {data.label || 'Input'}
+      </div>
       <Handle
         type="source"
         position={Position.Right}

@@ -334,6 +334,33 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     }));
   }, [onSchemaChange]);
 
+  // Новая функция для обработки изменений настроек элемента
+  const handleElementSettingsChange = useCallback((elementId, updatedData) => {
+    // Предполагаем, что изменения относятся к узлам
+    const newNodes = nodes.map(node => {
+      if (node.id === elementId) {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            ...updatedData // Объединяем существующие данные с обновленными
+          }
+        };
+      }
+      return node;
+    });
+    setNodes(newNodes);
+    const viewport = getViewport();
+    // Вызываем onSchemaChange для обновления родительского состояния и запуска эффекта сохранения
+    onSchemaChange(prevSchema => ({
+      ...prevSchema,
+      nodes: newNodes,
+      edges: edges,
+      position: [viewport.x, viewport.y],
+      zoom: viewport.zoom
+    }));
+  }, [nodes, edges, onSchemaChange, getViewport]);
+
   // Обработчик для отслеживания кликов по документу
   useEffect(() => {
     const handleDocumentClick = (event) => {
@@ -382,6 +409,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           initialPanelCollapsed={isPanelCollapsedState}
           initialPanelWidth={panelWidthState}
           onSaveSettings={handleSavePanelSettings}
+          onElementSettingsChange={handleElementSettingsChange}
         />
       </ReactFlow>
       {contextMenu.show && (

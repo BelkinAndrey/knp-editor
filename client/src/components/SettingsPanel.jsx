@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import './SettingsPanel.css'; // Import styles for the settings panel and button
 
-const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings }) => {
+const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings, onElementSettingsChange }) => {
   const [panelWidth, setPanelWidth] = useState(initialPanelWidth); // Initial panel width from props
   const [isResizing, setIsResizing] = useState(false);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(initialPanelCollapsed); // Collapsed/expanded state
@@ -45,8 +45,15 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
               <input
                 type="text"
                 value={populationLabel}
-                onChange={(e) => setPopulationLabel(e.target.value)}
-                placeholder="Enter population name"
+                onChange={(e) => {
+                  const newValue = e.target.value.replace(/\s+/g, ''); // Удаляем все пробелы
+                  setPopulationLabel(newValue);
+                  // Вызываем функцию для сохранения изменения в схеме
+                  if (onElementSettingsChange && selectedElement) {
+                    onElementSettingsChange(selectedElement.id, { label: newValue });
+                  }
+                }}
+                placeholder="Enter population name (no spaces allowed)"
                 className="settings-panel-input"
               />
             </div>
