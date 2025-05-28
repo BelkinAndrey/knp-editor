@@ -72,7 +72,6 @@
   z-index: 1;
 }
 
-
 .react-flow__handle {
   width: 8px;
   height: 8px;
@@ -84,14 +83,50 @@
   background: var(--accent-color-hover);
 }
 
+/* Базовые стили для ребер */
 .react-flow__edge-path {
   stroke: var(--border-color);
   stroke-width: 2;
 }
 
+/* Стили для создаваемой связи */
+.react-flow__connection {
+  stroke: var(--accent-color) !important;
+  stroke-width: 2 !important;
+  pointer-events: all !important;
+}
+
+.react-flow__connection-path,
+.react-flow__connection-line {
+  stroke: var(--accent-color) !important;
+  stroke-width: 2 !important;
+}
+
+/* Стили для анимации */
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: flowAnimation 1s linear infinite;
+}
+
+@keyframes flowAnimation {
+  from {
+    stroke-dashoffset: 10;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Стили для выделенного ребра */
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: var(--accent-color);
-  stroke-width: 3;
+  stroke-width: 6 !important;
+  filter: brightness(1.2); /* Делаем выделенную связь немного ярче */
+}
+
+/* Стили для коннекторов */
+.react-flow__connection-path,
+.react-flow__connection-line {
+  stroke: inherit !important;
 }
 
 .react-flow__background {
@@ -160,17 +195,6 @@
 .react-flow__background-pattern {
   stroke: var(--border-color);
   stroke-width: 1;
-}
-
-/* Стили для коннекторов */
-.react-flow__connection-path {
-  stroke: var(--accent-color);
-  stroke-width: 2;
-}
-
-.react-flow__connection-line {
-  stroke: var(--accent-color);
-  stroke-width: 2;
 }
 
 /* Стили для интерактивных элементов */

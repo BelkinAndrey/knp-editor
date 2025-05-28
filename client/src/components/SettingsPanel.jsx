@@ -8,6 +8,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const panelRef = useRef(null);
   const [populationLabel, setPopulationLabel] = useState(''); // State for population label input
   const [populationColor, setPopulationColor] = useState('#000000'); // Добавляем состояние для цвета
+  const [edgeColor, setEdgeColor] = useState('#000000'); // Добавляем состояние для цвета проекции
   
   // Добавляем массив предустановленных цветов
   const presetColors = [
@@ -108,18 +109,69 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
             </div>
           </div>
         )}
+
+        {selectedElement.type === 'edge' && (
+          <div className="edge-settings-content">
+            <div className="setting-item">
+              <span className="setting-label">Color:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="color"
+                  value={edgeColor}
+                  onChange={(e) => {
+                    const newColor = e.target.value;
+                    setEdgeColor(newColor);
+                    if (onElementSettingsChange && selectedElement) {
+                      onElementSettingsChange(selectedElement.id, { color: newColor });
+                    }
+                  }}
+                  className="settings-panel-color-input"
+                />
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <span style={{ marginRight: '4px' }}>(</span>
+                  {presetColors.map((color, index) => (
+                    <div
+                      key={color}
+                      onClick={() => {
+                        setEdgeColor(color);
+                        if (onElementSettingsChange && selectedElement) {
+                          onElementSettingsChange(selectedElement.id, { color });
+                        }
+                      }}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        backgroundColor: color,
+                        border: '1px solid #ccc',
+                        cursor: 'pointer',
+                        margin: '0 2px',
+                      }}
+                      title={color}
+                    />
+                  ))}
+                  <span style={{ marginLeft: '4px' }}>)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
-  }, [selectedElement, populationLabel, populationColor]);
+  }, [selectedElement, populationLabel, populationColor, edgeColor]);
 
-  // Effect to set initial populationLabel and color state when selectedElement changes
+  // Effect to set initial states when selectedElement changes
   useEffect(() => {
-    if (selectedElement && selectedElement.type === 'population') {
-      setPopulationLabel(selectedElement.data?.label || '');
-      setPopulationColor(selectedElement.data?.color || '#000000'); // Устанавливаем начальный цвет
+    if (selectedElement) {
+      if (selectedElement.type === 'population') {
+        setPopulationLabel(selectedElement.data?.label || '');
+        setPopulationColor(selectedElement.data?.color || '#000000');
+      } else if (selectedElement.type === 'edge') {
+        setEdgeColor(selectedElement.data?.color || '#000000');
+      }
     } else {
       setPopulationLabel('');
       setPopulationColor('#000000');
+      setEdgeColor('#000000');
     }
   }, [selectedElement]);
 

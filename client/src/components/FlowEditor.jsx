@@ -160,12 +160,23 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
 
   const onConnect = useCallback(
     (params) => {
-      const newEdges = addEdge({ ...params, animated: true }, edges);
+      const newEdge = {
+        ...params,
+        animated: true,
+        type: 'default',
+        style: { 
+          strokeWidth: 2,
+          stroke: 'var(--border-color)'
+        },
+        data: {
+          strokeWidth: 2 // Добавляем в data для сохранения
+        }
+      };
+      const newEdges = addEdge(newEdge, edges);
       setEdges(newEdges);
       const viewport = getViewport();
-      // Call onSchemaChange to update the parent state and trigger save effect
       onSchemaChange({
-        ...currentSchema, // Сохраняем name, isPanelCollapsed, panelWidth
+        ...currentSchema,
         nodes: nodes,
         edges: newEdges,
         position: [viewport.x, viewport.y],
@@ -312,7 +323,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       id: edge.id,
       source: edge.source,
       target: edge.target,
-      animated: edge.animated
+      animated: edge.animated,
+      data: edge.data // Добавляем данные ребра, включая цвет
     };
     
     setSelectedElement(() => newSelectedElement);
@@ -334,31 +346,60 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     }));
   }, [onSchemaChange]);
 
-  // Новая функция для обработки изменений настроек элемента
+  // Обновляем функцию для обработки изменений настроек элемента
   const handleElementSettingsChange = useCallback((elementId, updatedData) => {
-    // Предполагаем, что изменения относятся к узлам
-    const newNodes = nodes.map(node => {
-      if (node.id === elementId) {
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            ...updatedData // Объединяем существующие данные с обновленными
-          }
-        };
-      }
-      return node;
-    });
-    setNodes(newNodes);
-    const viewport = getViewport();
-    // Вызываем onSchemaChange для обновления родительского состояния и запуска эффекта сохранения
-    onSchemaChange(prevSchema => ({
-      ...prevSchema,
-      nodes: newNodes,
-      edges: edges,
-      position: [viewport.x, viewport.y],
-      zoom: viewport.zoom
-    }));
+    const isEdge = edges.some(edge => edge.id === elementId);
+    
+    if (isEdge) {
+      const newEdges = edges.map(edge => {
+        if (edge.id === elementId) {
+          return {
+            ...edge,
+            style: { 
+              ...edge.style,
+              stroke: updatedData.color || edge.style?.stroke || 'var(--border-color)'
+            },
+            data: {
+              ...edge.data,
+              ...updatedData
+            }
+          };
+        }
+        return edge;
+      });
+      setEdges(newEdges);
+      const viewport = getViewport();
+      onSchemaChange(prevSchema => ({
+        ...prevSchema,
+        nodes: nodes,
+        edges: newEdges,
+        position: [viewport.x, viewport.y],
+        zoom: viewport.zoom
+      }));
+    } else {
+      // Обновляем узел (существующая логика)
+      const newNodes = nodes.map(node => {
+        if (node.id === elementId) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              ...updatedData
+            }
+          };
+        }
+        return node;
+      });
+      setNodes(newNodes);
+      const viewport = getViewport();
+      onSchemaChange(prevSchema => ({
+        ...prevSchema,
+        nodes: newNodes,
+        edges: edges,
+        position: [viewport.x, viewport.y],
+        zoom: viewport.zoom
+      }));
+    }
   }, [nodes, edges, onSchemaChange, getViewport]);
 
   // Обработчик для отслеживания кликов по документу
@@ -375,7 +416,6 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       document.removeEventListener('click', handleDocumentClick);
     };
   }, [contextMenu.show, onCloseContextMenu]);
-
 
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
@@ -398,6 +438,17 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         elementsSelectable={true}
         selectNodesOnDrag={true}
         deleteKeyCode="Delete"
+        defaultEdgeOptions={{
+          animated: true,
+          type: 'default',
+          style: { 
+            strokeWidth: 2,
+            stroke: 'var(--border-color)'
+          },
+          data: {
+            strokeWidth: 2 // Добавляем в defaultEdgeOptions
+          }
+        }}
       >
         <Background />
         <Controls showZoom={false} showInteractive={false} />
