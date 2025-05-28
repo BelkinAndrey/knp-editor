@@ -13,19 +13,19 @@ const PopulationNode = ({ data, selected }) => {
       <div style={{ 
         fontWeight: 300,
         width: '80px',
+        height: '20px',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
         fontSize: '0.9em',
-        textAlign: 'center',
-        marginBottom: '2px'
+        textAlign: 'center'
       }}>
-        {data.label || 'no name'}
+        {data.label}
       </div>
       <div style={{ 
-        padding: '20px',
+        padding: '8px',
         borderRadius: '50%',
-        border: '1px solid var(--border-color)',
+        border: '2px solid var(--border-color)',
         width: '80px',
         height: '80px',
         display: 'flex',
@@ -35,7 +35,8 @@ const PopulationNode = ({ data, selected }) => {
         background: 'var(--bg-secondary)',
         boxShadow: selected ? '0 0 0 3px var(--accent-color)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
         borderColor: selected ? 'var(--accent-color)' : 'var(--border-color)',
-        position: 'relative'
+        position: 'relative',
+        '--population-dots-color': 'var(--text-color,rgb(103, 100, 100))'
       }}>
         <Handle
           type="target"
@@ -47,7 +48,30 @@ const PopulationNode = ({ data, selected }) => {
           position={Position.Right}
           style={{ background: '#555', width: 10, height: 10, borderRadius: '2px' }}
         />
+
+        <svg width="80" height="80" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="20" cy="4" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="20" cy="12" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="6" cy="12" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="34" cy="12" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="13" cy="8" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="27" cy="8" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="20" cy="20" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="6" cy="20" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="34" cy="20" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="13" cy="16" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="27" cy="16" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="20" cy="28" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="6" cy="28" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="34" cy="28" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="13" cy="24" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="27" cy="24" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="20" cy="36" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="13" cy="32" r="2" fill="var(--population-dots-color)"/>
+        <circle cx="27" cy="32" r="2" fill="var(--population-dots-color)"/>
+        </svg>
       </div>
+      
     </div>
   );
 };
