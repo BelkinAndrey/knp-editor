@@ -7,6 +7,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(initialPanelCollapsed); // Collapsed/expanded state
   const panelRef = useRef(null);
   const [populationLabel, setPopulationLabel] = useState(''); // State for population label input
+  const [populationColor, setPopulationColor] = useState('#000000'); // Добавляем состояние для цвета
 
   // Memoize element type display
   const elementTypeDisplay = useMemo(() => {
@@ -57,18 +58,35 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                 className="settings-panel-input"
               />
             </div>
+            <div className="setting-item">
+              <span className="setting-label">Color:</span>
+              <input
+                type="color"
+                value={populationColor}
+                onChange={(e) => {
+                  const newColor = e.target.value;
+                  setPopulationColor(newColor);
+                  if (onElementSettingsChange && selectedElement) {
+                    onElementSettingsChange(selectedElement.id, { color: newColor });
+                  }
+                }}
+                className="settings-panel-color-input"
+              />
+            </div>
           </div>
         )}
       </div>
     );
-  }, [selectedElement, populationLabel]);
+  }, [selectedElement, populationLabel, populationColor]);
 
-  // Effect to set initial populationLabel state when selectedElement changes
+  // Effect to set initial populationLabel and color state when selectedElement changes
   useEffect(() => {
     if (selectedElement && selectedElement.type === 'population') {
       setPopulationLabel(selectedElement.data?.label || '');
+      setPopulationColor(selectedElement.data?.color || '#000000'); // Устанавливаем начальный цвет
     } else {
-      setPopulationLabel(''); // Clear state if not population
+      setPopulationLabel('');
+      setPopulationColor('#000000');
     }
   }, [selectedElement]);
 

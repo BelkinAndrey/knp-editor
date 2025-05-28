@@ -68,11 +68,15 @@
   font-weight: 600;
   color: #666;
   font-size: 0.9em;
+  width: 60px; /* Фиксированная ширина для всех меток */
+  flex-shrink: 0; /* Запрещаем сжатие метки */
 }
 
 .setting-item {
-  display: flex; /* Сделать контейнер гибким */
-  align-items: center; /* Выровнять элементы по центру вертикали */
+  display: flex;
+  align-items: center;
+  gap: 10px; /* Добавляем отступ между label и input */
+  margin-bottom: 5px; /* Добавляем отступ между элементами */
 }
 
 .edge-settings,
@@ -128,7 +132,6 @@
   background-color: #252525;
   color: #e0e0e0;
   transition: all 0.2s ease;
-  margin-left: 5px; /* Add some margin to the left */
 }
 
 .settings-panel-input:focus {
@@ -140,4 +143,28 @@
 
 .settings-panel-input::placeholder {
   color: #666;
+}
+
+.settings-panel-color-input {
+  width: 20px; /* Уменьшаем размер */
+  height: 20px; /* Делаем квадратным */
+  padding: 0;
+  border: 1px solid #3d3d3d; /* Используем тот же цвет границы, что и у других полей */
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #252525; /* Используем тот же фон, что и у других полей */
+  margin-left: 0; /* Убираем отступ слева, так как теперь используем gap */
+}
+
+.settings-panel-color-input:hover {
+  border-color: #29CCB1; /* Тот же эффект при наведении, что и у других полей */
+}
+
+.settings-panel-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.settings-panel-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 2px;
 } 

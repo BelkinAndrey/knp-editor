@@ -17,7 +17,7 @@ const PopulationNode = ({ data, selected }) => {
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
-        fontSize: '0.9em',
+        fontSize: '1.1em',
         textAlign: 'center'
       }}>
         {data.label}
