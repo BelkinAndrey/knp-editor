@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import './SettingsPanel.css'; // Импорт стилей для панели настроек и кнопки
+import './SettingsPanel.css'; // Import styles for the settings panel and button
 
 const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings }) => {
-  const [panelWidth, setPanelWidth] = useState(initialPanelWidth); // Начальная ширина панели из пропсов
+  const [panelWidth, setPanelWidth] = useState(initialPanelWidth); // Initial panel width from props
   const [isResizing, setIsResizing] = useState(false);
-  const [isPanelCollapsed, setIsPanelCollapsed] = useState(initialPanelCollapsed); // Состояние свернуто/развернуто
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(initialPanelCollapsed); // Collapsed/expanded state
   const panelRef = useRef(null);
 
-  // Мемоизируем отображение типа элемента
+  // Memoize element type display
   const elementTypeDisplay = useMemo(() => {
     if (!selectedElement) {
       return '';
     }
     
     const typeMap = {
-      'edge': 'Edge',
+      'edge': 'Projection',
       'population': 'Population',
       'input': 'Input',
       'output': 'Output'
@@ -23,30 +23,26 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     return typeMap[selectedElement.type] || selectedElement.type;
   }, [selectedElement]);
 
-  // Мемоизируем содержимое панели
+  // Memoize panel content
   const panelContent = useMemo(() => {
     if (!selectedElement) {
-      return <p>Выберите элемент для просмотра настроек</p>;
+      return <p>Select an element to view settings</p>;
     }
 
     return (
       <div className="element-settings">
-        <div className="setting-item">
-          <span className="setting-label">Тип элемента:</span>
-          <span className="setting-value">{elementTypeDisplay}</span>
-        </div>
-        <div className="setting-item">
-          <span className="setting-label">ID:</span>
-          <span className="setting-value">{selectedElement.id}</span>
+        <div className="setting-item" style={{ color: '#888', fontSize: '0.8em', height: '25px' }}>
+          <span className="setting-label">ID: </span>
+          <span className="setting-label">{selectedElement.id}</span>
         </div>
         {selectedElement.type === 'edge' && (
           <div className="edge-settings">
             <div className="setting-item">
-              <span className="setting-label">Источник:</span>
+              <span className="setting-label">Source:</span>
               <span className="setting-value">{selectedElement.source}</span>
             </div>
             <div className="setting-item">
-              <span className="setting-label">Цель:</span>
+              <span className="setting-label">Target:</span>
               <span className="setting-value">{selectedElement.target}</span>
             </div>
           </div>
@@ -54,24 +50,24 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
         {selectedElement.type === 'population' && (
           <div className="population-settings">
             <div className="setting-item">
-              <span className="setting-label">Метка:</span>
-              <span className="setting-value">{selectedElement.data?.label || 'Популяция'}</span>
+              <span className="setting-label">Label:</span>
+              <span className="setting-value">{selectedElement.data?.label || 'Population'}</span>
             </div>
           </div>
         )}
         {selectedElement.type === 'input' && (
           <div className="input-settings">
             <div className="setting-item">
-              <span className="setting-label">Метка:</span>
-              <span className="setting-value">{selectedElement.data?.label || 'Вход'}</span>
+              <span className="setting-label">Label:</span>
+              <span className="setting-value">{selectedElement.data?.label || 'Input'}</span>
             </div>
           </div>
         )}
         {selectedElement.type === 'output' && (
           <div className="output-settings">
             <div className="setting-item">
-              <span className="setting-label">Метка:</span>
-              <span className="setting-value">{selectedElement.data?.label || 'Выход'}</span>
+              <span className="setting-label">Label:</span>
+              <span className="setting-value">{selectedElement.data?.label || 'Output'}</span>
             </div>
           </div>
         )}
@@ -79,7 +75,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     );
   }, [selectedElement, elementTypeDisplay]);
 
-  // Добавим эффект для отслеживания изменений пропсов
+  // Add effect to track prop changes
   useEffect(() => {
   }, [selectedElement, isVisible, initialPanelCollapsed, initialPanelWidth]);
 
@@ -90,13 +86,13 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const handleMouseMove = (e) => {
     if (!isResizing) return;
     const newWidth = document.body.clientWidth - e.clientX;
-    const minWidth = 300; // Минимальная ширина панели
+    const minWidth = 300; // Minimum panel width
     setPanelWidth(Math.max(minWidth, newWidth));
   };
 
   const handleMouseUp = () => {
     setIsResizing(false);
-    // Сохраняем ширину панели после изменения размера
+    // Save panel width after resizing
     if (onSaveSettings) {
       onSaveSettings({ isPanelCollapsed, panelWidth });
     }
@@ -112,7 +108,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     };
   }, [isResizing, panelWidth, isPanelCollapsed]); // Добавляем зависимости panelWidth и isPanelCollapsed
 
-  // Эффект для установки начальной ширины и состояния при загрузке
+  // Effect to set initial width and state on load
   useEffect(() => {
     setPanelWidth(initialPanelWidth);
     setIsPanelCollapsed(initialPanelCollapsed);
@@ -121,7 +117,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const handleToggleCollapse = () => {
     const newCollapsedState = !isPanelCollapsed;
     setIsPanelCollapsed(newCollapsedState);
-    // Сохраняем состояние свернуто/развернуто
+    // Save collapsed/expanded state
     if (onSaveSettings) {
       onSaveSettings({ isPanelCollapsed: newCollapsedState, panelWidth });
     }
@@ -129,22 +125,22 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
 
   return (
     <>
-      {/* Кнопка для сворачивания/разворачивания */}
+      {/* Button for collapsing/expanding */}
       {isVisible && (
         <button className="settings-toggle-button" onClick={handleToggleCollapse}>
           {isPanelCollapsed ? '▲' : '▼'}
         </button>
       )}
 
-      {/* Основная панель настроек */}
+      {/* Main settings panel */}
       {isVisible && (
         <div className={`settings-panel-wrapper ${isPanelCollapsed ? 'collapsed' : ''}`} style={{ width: isPanelCollapsed ? '0px' : panelWidth + 'px' }}>
           <div className="settings-panel-container" style={{ pointerEvents: isVisible && !isPanelCollapsed ? 'auto' : 'none' }} ref={panelRef}>
             <div className="settings-panel">
-              <h2>Настройки</h2>
+              <h2>Settings {elementTypeDisplay}</h2>
               {panelContent}
             </div>
-            {/* Ручка изменения размера видна только когда панель развернута */}
+            {/* Resize handle visible only when panel is expanded */}
             {!isPanelCollapsed && (
               <div
                 className="resize-handle"
@@ -158,4 +154,4 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   );
 };
 
-export default React.memo(SettingsPanel); // Мемоизируем весь компонент 
+export default React.memo(SettingsPanel); // Memoize the entire component 
