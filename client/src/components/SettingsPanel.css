@@ -70,11 +70,74 @@
   font-size: 0.9em;
 }
 
+.setting-item {
+  display: flex; /* Сделать контейнер гибким */
+  align-items: center; /* Выровнять элементы по центру вертикали */
+}
+
 .edge-settings,
 .population-settings,
 .input-settings,
 .output-settings {
   margin-top: 15px;
-  padding-top: 15px;
-  border-top: 1px solid #7d7d7d;
+  padding-top: 0;
+  border-top: none;
+}
+
+.settings-section-separator {
+  height: 1px;
+  background-color: #7d7d7d;
+  margin: 10px 0;
+}
+
+.population-settings-content {
+  margin-top: 15px;
+  padding-top: 0;
+  border-top: none;
+}
+
+.filename-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid #3d3d3d;
+  border-radius: 6px;
+  font-size: 1rem;
+  background-color: #252525;
+  color: #e0e0e0;
+  transition: all 0.2s ease;
+}
+
+.filename-input:focus {
+  outline: none;
+  border-color: #29CCB1;
+  background-color: #2d2d2d;
+  box-shadow: 0 0 0 3px rgba(41, 204, 177, 0.15);
+}
+
+.filename-input::placeholder {
+  color: #666;
+}
+
+/* Styles for settings panel input, based on filename-input */
+.settings-panel-input {
+  flex: 1;
+  padding: 6px 10px; /* Slightly less padding than modal input */
+  border: 1px solid #3d3d3d;
+  border-radius: 4px; /* Slightly smaller border-radius */
+  font-size: 0.9rem; /* Slightly smaller font size */
+  background-color: #252525;
+  color: #e0e0e0;
+  transition: all 0.2s ease;
+  margin-left: 5px; /* Add some margin to the left */
+}
+
+.settings-panel-input:focus {
+  outline: none;
+  border-color: #29CCB1;
+  background-color: #2d2d2d;
+  box-shadow: 0 0 0 3px rgba(41, 204, 177, 0.15);
+}
+
+.settings-panel-input::placeholder {
+  color: #666;
 } 

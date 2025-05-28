@@ -6,6 +6,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [isResizing, setIsResizing] = useState(false);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(initialPanelCollapsed); // Collapsed/expanded state
   const panelRef = useRef(null);
+  const [populationLabel, setPopulationLabel] = useState(''); // State for population label input
 
   // Memoize element type display
   const elementTypeDisplay = useMemo(() => {
@@ -31,49 +32,38 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
 
     return (
       <div className="element-settings">
-        <div className="setting-item" style={{ color: '#888', fontSize: '0.8em', height: '25px' }}>
-          <span className="setting-label">ID: </span>
-          <span className="setting-label">{selectedElement.id}</span>
+        <div className="setting-item" style={{ color: '#888', fontSize: '0.8em', height: '30px' }}>
+          <span className="setting-label">ID: {selectedElement.id}</span>
         </div>
-        {selectedElement.type === 'edge' && (
-          <div className="edge-settings">
-            <div className="setting-item">
-              <span className="setting-label">Source:</span>
-              <span className="setting-value">{selectedElement.source}</span>
-            </div>
-            <div className="setting-item">
-              <span className="setting-label">Target:</span>
-              <span className="setting-value">{selectedElement.target}</span>
-            </div>
-          </div>
-        )}
+
+        {selectedElement.type && <div className="settings-section-separator"></div>}
+
         {selectedElement.type === 'population' && (
-          <div className="population-settings">
+          <div className="population-settings-content">
             <div className="setting-item">
-              <span className="setting-label">Label:</span>
-              <span className="setting-value">{selectedElement.data?.label || 'Population'}</span>
-            </div>
-          </div>
-        )}
-        {selectedElement.type === 'input' && (
-          <div className="input-settings">
-            <div className="setting-item">
-              <span className="setting-label">Label:</span>
-              <span className="setting-value">{selectedElement.data?.label || 'Input'}</span>
-            </div>
-          </div>
-        )}
-        {selectedElement.type === 'output' && (
-          <div className="output-settings">
-            <div className="setting-item">
-              <span className="setting-label">Label:</span>
-              <span className="setting-value">{selectedElement.data?.label || 'Output'}</span>
+              <span className="setting-label">Name:</span>
+              <input
+                type="text"
+                value={populationLabel}
+                onChange={(e) => setPopulationLabel(e.target.value)}
+                placeholder="Enter population name"
+                className="settings-panel-input"
+              />
             </div>
           </div>
         )}
       </div>
     );
-  }, [selectedElement, elementTypeDisplay]);
+  }, [selectedElement, populationLabel]);
+
+  // Effect to set initial populationLabel state when selectedElement changes
+  useEffect(() => {
+    if (selectedElement && selectedElement.type === 'population') {
+      setPopulationLabel(selectedElement.data?.label || '');
+    } else {
+      setPopulationLabel(''); // Clear state if not population
+    }
+  }, [selectedElement]);
 
   // Add effect to track prop changes
   useEffect(() => {
