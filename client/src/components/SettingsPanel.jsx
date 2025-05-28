@@ -33,7 +33,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
 
     return (
       <div className="element-settings">
-        <div className="setting-item" style={{ color: '#888', fontSize: '0.8em', height: '30px' }}>
+        <div style={{ color: '#888', fontSize: '0.8em', height: '30px' }}>
           <span className="setting-label">ID: {selectedElement.id}</span>
         </div>
 
