@@ -10,6 +10,8 @@
   -moz-user-select: none; /* Для Firefox */
   -ms-user-select: none; /* Для IE/Edge */
   transition: right 0.3s ease; /* Добавляем плавную анимацию */
+  display: flex;
+  flex-direction: column;
 }
 
 .settings-panel-wrapper.collapsed {
@@ -25,6 +27,22 @@
   width: 100%; /* Панель занимает всю ширину контейнера */
   height: 100%; /* Панель занимает всю высоту контейнера */
   box-sizing: border-box; /* Учитываем padding в размере */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Предотвращаем прокрутку контейнера */
+}
+
+.settings-panel {
+  flex: 1;
+  overflow-y: scroll; /* Меняем auto на scroll для предотвращения мерцания */
+  padding-right: 5px;
+  scrollbar-width: none; /* Для Firefox */
+  -ms-overflow-style: none; /* Для IE и Edge */
+}
+
+/* Скрываем скроллбар для Chrome, Safari и Opera */
+.settings-panel::-webkit-scrollbar {
+  display: none;
 }
 
 .settings-toggle-button {
@@ -73,7 +91,7 @@
   font-weight: 600;
   color: #666;
   font-size: 0.9em;
-  width: 100px; /* Увеличиваем ширину с 60px до 100px */
+  width: 100px; 
   flex-shrink: 0; /* Запрещаем сжатие метки */
 }
 
