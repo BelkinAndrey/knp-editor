@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import './SettingsPanel.css'; // Import styles for the settings panel and button
+import NeuronParamsPanel from './NeuronParamsPanel';
 
 const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings, onElementSettingsChange }) => {
   const [panelWidth, setPanelWidth] = useState(initialPanelWidth); // Initial panel width from props
@@ -11,7 +12,222 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [edgeColor, setEdgeColor] = useState('#000000'); // Добавляем состояние для цвета проекции
   const [neuronType, setNeuronType] = useState('BLIFATNeuron'); // Новое состояние для типа нейрона
   const [neuronCount, setNeuronCount] = useState('1'); // Новое состояние для количества нейронов
+  const [neuronParams, setNeuronParams] = useState({}); // Новое состояние для параметров нейрона
   
+  // Флаги для отслеживания изменений
+  const isInitialMount = useRef(true);
+  const prevElementIdRef = useRef(null);
+  const prevValuesRef = useRef({
+    neuronParams: {},
+    neuronType: '',
+    neuronCount: '',
+    populationLabel: '',
+    populationColor: '',
+    edgeColor: ''
+  });
+
+  // Эффект для инициализации состояния при изменении selectedElement
+  useEffect(() => {
+    // Если элемент не изменился, не обновляем состояние
+    if (selectedElement?.id === prevElementIdRef.current) {
+      return;
+    }
+
+    prevElementIdRef.current = selectedElement?.id;
+
+    if (!selectedElement) {
+      // Сбрасываем состояние при отсутствии выбранного элемента
+      setPopulationLabel('');
+      setPopulationColor('#000000');
+      setEdgeColor('#000000');
+      setNeuronType('BLIFATNeuron');
+      setNeuronCount('1');
+      setNeuronParams({});
+      return;
+    }
+
+    // Инициализируем состояние из данных элемента
+    if (selectedElement.type === 'population') {
+      // Получаем данные из элемента
+      const elementData = selectedElement.data || {};
+      
+      // Обновляем все состояния с проверкой на существование значений
+      const newLabel = elementData.label || '';
+      const newColor = elementData.color || '#000000';
+      const newNeuronType = elementData.neuronType || 'BLIFATNeuron';
+      const newNeuronCount = (elementData.neuronCount || 1).toString();
+      
+      // Получаем параметры нейрона для текущего типа
+      let neuronTypeParams = {};
+      
+      // Проверяем наличие параметров в данных элемента
+      if (elementData.neuronParams) {
+        // Если есть параметры для текущего типа, используем их
+        if (elementData.neuronParams[newNeuronType]) {
+          neuronTypeParams = { ...elementData.neuronParams[newNeuronType] };
+        } else {
+          // Если параметров нет, инициализируем значения по умолчанию в зависимости от типа
+          switch (newNeuronType) {
+            case 'BLIFATNeuron':
+              neuronTypeParams = {
+                threshold: -50,
+                tau: 20,
+                restPotential: -70
+              };
+              break;
+            case 'SynapticResourceSTDPNeuron':
+              neuronTypeParams = {
+                threshold: -50,
+                tau: 20,
+                restPotential: -70,
+                resourceAmount: 1.0,
+                recoveryTime: 100
+              };
+              break;
+            case 'AltAILIF':
+              neuronTypeParams = {
+                threshold: -50,
+                tau: 20,
+                restPotential: -70,
+                refractoryPeriod: 5
+              };
+              break;
+            default:
+              neuronTypeParams = {};
+          }
+        }
+      }
+      
+      // Обновляем состояния
+      setPopulationLabel(newLabel);
+      setPopulationColor(newColor);
+      setNeuronType(newNeuronType);
+      setNeuronCount(newNeuronCount);
+      setNeuronParams(neuronTypeParams);
+
+      // Если параметры были инициализированы значениями по умолчанию, обновляем их в родительском компоненте
+      if (!elementData.neuronParams?.[newNeuronType]) {
+        onElementSettingsChange?.(selectedElement.id, {
+          neuronParams: {
+            [newNeuronType]: neuronTypeParams
+          }
+        });
+      }
+    } else if (selectedElement.type === 'edge') {
+      const newColor = selectedElement.data?.color || '#000000';
+      setEdgeColor(newColor);
+    }
+  }, [selectedElement?.id, onElementSettingsChange]);
+
+  // Обработчик изменения параметров нейрона
+  const handleNeuronParamChange = useCallback((paramName, value) => {
+    if (!selectedElement) return;
+    
+    const newParams = {
+      ...neuronParams,
+      [paramName]: value
+    };
+    
+    setNeuronParams(newParams);
+    
+    // Немедленно обновляем родительский компонент с правильной структурой
+    onElementSettingsChange?.(selectedElement.id, {
+      neuronParams: {
+        [neuronType]: newParams
+      }
+    });
+  }, [selectedElement, neuronParams, neuronType, onElementSettingsChange]);
+
+  // Обновляем обработчики
+  const handlePopulationLabelChange = useCallback((newValue) => {
+    if (!selectedElement) return;
+    
+    const value = newValue.replace(/\s+/g, '');
+    setPopulationLabel(value);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      label: value
+    });
+  }, [selectedElement, onElementSettingsChange]);
+
+  const handlePopulationColorChange = useCallback((newColor) => {
+    if (!selectedElement) return;
+    
+    setPopulationColor(newColor);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      color: newColor
+    });
+  }, [selectedElement, onElementSettingsChange]);
+
+  const handleNeuronTypeChange = useCallback((newType) => {
+    if (!selectedElement) return;
+    
+    setNeuronType(newType);
+    setNeuronParams({});
+    
+    // Инициализируем параметры по умолчанию для нового типа
+    let defaultParams = {};
+    switch (newType) {
+      case 'BLIFATNeuron':
+        defaultParams = {
+          threshold: -50,
+          tau: 20,
+          restPotential: -70
+        };
+        break;
+      case 'SynapticResourceSTDPNeuron':
+        defaultParams = {
+          threshold: -50,
+          tau: 20,
+          resourceAmount: 1.0,
+          recoveryTime: 100
+        };
+        break;
+      case 'AltAILIF':
+        defaultParams = {
+          threshold: -50,
+          tau: 20,
+          refractoryPeriod: 5
+        };
+        break;
+      default:
+        defaultParams = {};
+    }
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      neuronType: newType,
+      neuronParams: {
+        [newType]: defaultParams
+      }
+    });
+  }, [selectedElement, onElementSettingsChange]);
+
+  const handleNeuronCountChange = useCallback((value) => {
+    if (!selectedElement) return;
+    
+    if (value === '' || /^\d+$/.test(value)) {
+      const numValue = parseInt(value) || 0;
+      if (numValue > 0 || value === '') {
+        setNeuronCount(value);
+        
+        onElementSettingsChange?.(selectedElement.id, {
+          neuronCount: numValue || 1
+        });
+      }
+    }
+  }, [selectedElement, onElementSettingsChange]);
+
+  const handleEdgeColorChange = useCallback((newColor) => {
+    if (!selectedElement) return;
+    
+    setEdgeColor(newColor);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      color: newColor
+    });
+  }, [selectedElement, onElementSettingsChange]);
+
   // Добавляем массив предустановленных цветов
   const presetColors = [
     '#FFFFFF', // белый
@@ -39,206 +255,6 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     
     return typeMap[selectedElement.type] || selectedElement.type;
   }, [selectedElement]);
-
-  // Memoize panel content
-  const panelContent = useMemo(() => {
-    if (!selectedElement) {
-      return <p>Select an element to view settings</p>;
-    }
-
-    return (
-      <div className="element-settings">
-        <div style={{ color: '#888', fontSize: '0.8em', height: '30px' }}>
-          <span className="setting-label">ID: {selectedElement.id}</span>
-        </div>
-
-        {selectedElement.type && <div className="settings-section-separator"></div>}
-
-        {selectedElement.type === 'population' && (
-          <div className="population-settings-content">
-            <div className="setting-item">
-              <span className="setting-label">Name:</span>
-              <input
-                type="text"
-                value={populationLabel}
-                onChange={(e) => {
-                  const newValue = e.target.value.replace(/\s+/g, ''); // Удаляем все пробелы
-                  setPopulationLabel(newValue);
-                  // Вызываем функцию для сохранения изменения в схеме
-                  if (onElementSettingsChange && selectedElement) {
-                    onElementSettingsChange(selectedElement.id, { label: newValue });
-                  }
-                }}
-                placeholder="Enter population name (no spaces allowed)"
-                className="settings-panel-input"
-              />
-            </div>
-            <div className="setting-item">
-              <span className="setting-label">Color:</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="color"
-                  value={populationColor}
-                  onChange={(e) => {
-                    const newColor = e.target.value;
-                    setPopulationColor(newColor);
-                    if (onElementSettingsChange && selectedElement) {
-                      onElementSettingsChange(selectedElement.id, { color: newColor });
-                    }
-                  }}
-                  className="settings-panel-color-input"
-                />
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span style={{ marginRight: '4px' }}>(</span>
-                  {presetColors.map((color, index) => (
-                    <div
-                      key={color}
-                      onClick={() => handlePresetColorClick(color)}
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        backgroundColor: color,
-                        border: '1px solid #ccc',
-                        cursor: 'pointer',
-                        margin: '0 2px',
-                      }}
-                      title={color}
-                    />
-                  ))}
-                  <span style={{ marginLeft: '4px' }}>)</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="settings-section-separator"></div>
-            <h3 style={{ margin: '10px 0', fontSize: '1em', color: '#FFFFFF' }}>Neuron</h3>
-            <div className="setting-item">
-              <span className="setting-label">Neuron type:</span>
-              <select
-                value={neuronType}
-                onChange={(e) => {
-                  const newType = e.target.value;
-                  setNeuronType(newType);
-                  if (onElementSettingsChange && selectedElement) {
-                    onElementSettingsChange(selectedElement.id, { neuronType: newType });
-                  }
-                }}
-                className="settings-panel-input"
-              >
-                <option value="BLIFATNeuron">BLIFATNeuron</option>
-                <option value="SynapticResourceSTDPNeuron">SynapticResourceSTDPNeuron</option>
-                <option value="AltAILIF">AltAILIF</option>
-              </select>
-            </div>
-            <div className="setting-item">
-              <span className="setting-label">Neuron pcs:</span>
-              <input
-                type="text"
-                value={neuronCount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  // Разрешаем только цифры и пустую строку
-                  if (value === '' || /^\d+$/.test(value)) {
-                    const numValue = parseInt(value) || 0;
-                    // Обновляем только если число положительное или это пустая строка
-                    if (numValue > 0 || value === '') {
-                      setNeuronCount(value);
-                      if (onElementSettingsChange && selectedElement) {
-                        onElementSettingsChange(selectedElement.id, { 
-                          neuronCount: value === '' ? 1 : numValue 
-                        });
-                      }
-                    }
-                  }
-                }}
-                onBlur={(e) => {
-                  // При потере фокуса, если поле пустое или значение 0, устанавливаем 1
-                  if (!e.target.value || parseInt(e.target.value) === 0) {
-                    setNeuronCount('1');
-                    if (onElementSettingsChange && selectedElement) {
-                      onElementSettingsChange(selectedElement.id, { neuronCount: 1 });
-                    }
-                  }
-                }}
-                className="settings-panel-input"
-                placeholder="Enter number of neurons"
-              />
-            </div>
-          </div>
-        )}
-
-        {selectedElement.type === 'edge' && (
-          <div className="edge-settings-content">
-            <div className="setting-item">
-              <span className="setting-label">Color:</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="color"
-                  value={edgeColor}
-                  onChange={(e) => {
-                    const newColor = e.target.value;
-                    setEdgeColor(newColor);
-                    if (onElementSettingsChange && selectedElement) {
-                      onElementSettingsChange(selectedElement.id, { color: newColor });
-                    }
-                  }}
-                  className="settings-panel-color-input"
-                />
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span style={{ marginRight: '4px' }}>(</span>
-                  {presetColors.map((color, index) => (
-                    <div
-                      key={color}
-                      onClick={() => {
-                        setEdgeColor(color);
-                        if (onElementSettingsChange && selectedElement) {
-                          onElementSettingsChange(selectedElement.id, { color });
-                        }
-                      }}
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        backgroundColor: color,
-                        border: '1px solid #ccc',
-                        cursor: 'pointer',
-                        margin: '0 2px',
-                      }}
-                      title={color}
-                    />
-                  ))}
-                  <span style={{ marginLeft: '4px' }}>)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }, [selectedElement, populationLabel, populationColor, edgeColor, neuronType, neuronCount]);
-
-  // Effect to set initial states when selectedElement changes
-  useEffect(() => {
-    if (selectedElement) {
-      if (selectedElement.type === 'population') {
-        setPopulationLabel(selectedElement.data?.label || '');
-        setPopulationColor(selectedElement.data?.color || '#000000');
-        setNeuronType(selectedElement.data?.neuronType || 'BLIFATNeuron');
-        setNeuronCount(selectedElement.data?.neuronCount?.toString() || '1');
-      } else if (selectedElement.type === 'edge') {
-        setEdgeColor(selectedElement.data?.color || '#000000');
-      }
-    } else {
-      setPopulationLabel('');
-      setPopulationColor('#000000');
-      setEdgeColor('#000000');
-      setNeuronType('BLIFATNeuron');
-      setNeuronCount('1');
-    }
-  }, [selectedElement]);
-
-  // Add effect to track prop changes
-  useEffect(() => {
-  }, [selectedElement, isVisible, initialPanelCollapsed, initialPanelWidth]);
 
   const handleMouseDown = (e) => {
     setIsResizing(true);
@@ -306,7 +322,133 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
           <div className="settings-panel-container" style={{ pointerEvents: isVisible && !isPanelCollapsed ? 'auto' : 'none' }} ref={panelRef}>
             <div className="settings-panel">
               <h2>Settings {elementTypeDisplay}</h2>
-              {panelContent}
+              {selectedElement && (
+                <div className="element-settings">
+                  <div style={{ color: '#888', fontSize: '0.8em', height: '30px' }}>
+                    <span className="setting-label">ID: {selectedElement.id}</span>
+                  </div>
+
+                  {selectedElement.type && <div className="settings-section-separator"></div>}
+
+                  {selectedElement.type === 'population' && (
+                    <div className="population-settings-content">
+                      <div className="setting-item">
+                        <span className="setting-label">Name:</span>
+                        <input
+                          type="text"
+                          value={populationLabel}
+                          onChange={(e) => handlePopulationLabelChange(e.target.value)}
+                          placeholder="Enter population name (no spaces allowed)"
+                          className="settings-panel-input"
+                        />
+                      </div>
+                      <div className="setting-item">
+                        <span className="setting-label">Color:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input
+                            type="color"
+                            value={populationColor}
+                            onChange={(e) => handlePopulationColorChange(e.target.value)}
+                            className="settings-panel-color-input"
+                          />
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <span style={{ marginRight: '4px' }}>(</span>
+                            {presetColors.map((color) => (
+                              <div
+                                key={color}
+                                onClick={() => handlePopulationColorChange(color)}
+                                style={{
+                                  width: '16px',
+                                  height: '16px',
+                                  backgroundColor: color,
+                                  border: '1px solid #ccc',
+                                  cursor: 'pointer',
+                                  margin: '0 2px',
+                                }}
+                                title={color}
+                              />
+                            ))}
+                            <span style={{ marginLeft: '4px' }}>)</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="settings-section-separator"></div>
+                      <h3 style={{ margin: '10px 0', fontSize: '1em', color: '#FFFFFF' }}>Neuron</h3>
+                      <div className="setting-item">
+                        <span className="setting-label">Neuron type:</span>
+                        <select
+                          value={neuronType}
+                          onChange={(e) => handleNeuronTypeChange(e.target.value)}
+                          className="settings-panel-input"
+                        >
+                          <option value="BLIFATNeuron">BLIFATNeuron</option>
+                          <option value="SynapticResourceSTDPNeuron">SynapticResourceSTDPNeuron</option>
+                          <option value="AltAILIF">AltAILIF</option>
+                        </select>
+                      </div>
+                      <div className="setting-item">
+                        <span className="setting-label">Neuron pcs:</span>
+                        <input
+                          type="text"
+                          value={neuronCount}
+                          onChange={(e) => handleNeuronCountChange(e.target.value)}
+                          onBlur={(e) => {
+                            if (!e.target.value || parseInt(e.target.value) === 0) {
+                              setNeuronCount('1');
+                              if (selectedElement) {
+                                onElementSettingsChange?.(selectedElement.id, { neuronCount: 1 });
+                              }
+                            }
+                          }}
+                          className="settings-panel-input"
+                          placeholder="Enter number of neurons"
+                        />
+                      </div>
+                      <NeuronParamsPanel
+                        neuronType={neuronType}
+                        params={neuronParams}
+                        onChange={handleNeuronParamChange}
+                      />
+                    </div>
+                  )}
+
+                  {selectedElement.type === 'edge' && (
+                    <div className="edge-settings-content">
+                      <div className="setting-item">
+                        <span className="setting-label">Color:</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input
+                            type="color"
+                            value={edgeColor}
+                            onChange={(e) => handleEdgeColorChange(e.target.value)}
+                            className="settings-panel-color-input"
+                          />
+                          <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <span style={{ marginRight: '4px' }}>(</span>
+                            {presetColors.map((color) => (
+                              <div
+                                key={color}
+                                onClick={() => handleEdgeColorChange(color)}
+                                style={{
+                                  width: '16px',
+                                  height: '16px',
+                                  backgroundColor: color,
+                                  border: '1px solid #ccc',
+                                  cursor: 'pointer',
+                                  margin: '0 2px',
+                                }}
+                                title={color}
+                              />
+                            ))}
+                            <span style={{ marginLeft: '4px' }}>)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {/* Resize handle visible only when panel is expanded */}
             {!isPanelCollapsed && (
