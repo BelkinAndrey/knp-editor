@@ -3,12 +3,17 @@
   top: 20px;
   bottom: 20px;
   right: 20px;
-  width: 300px;
+  min-width: 355px; /* Заменяем width на min-width */
   z-index: 10;
+  user-select: none; /* Запрещаем выделение текста */
+  -webkit-user-select: none; /* Для Safari */
+  -moz-user-select: none; /* Для Firefox */
+  -ms-user-select: none; /* Для IE/Edge */
+  transition: right 0.3s ease; /* Добавляем плавную анимацию */
 }
 
 .settings-panel-wrapper.collapsed {
-  right: -320px; /* Сдвигаем панель за пределы видимой области */
+  right: -400px; /* Увеличиваем отступ, чтобы панель полностью скрывалась */
   /* Можно также использовать width: 0; overflow: hidden; в зависимости от реализации */
 }
 
@@ -68,7 +73,7 @@
   font-weight: 600;
   color: #666;
   font-size: 0.9em;
-  width: 60px; /* Фиксированная ширина для всех меток */
+  width: 100px; /* Увеличиваем ширину с 60px до 100px */
   flex-shrink: 0; /* Запрещаем сжатие метки */
 }
 
@@ -125,13 +130,17 @@
 /* Styles for settings panel input, based on filename-input */
 .settings-panel-input {
   flex: 1;
-  padding: 6px 10px; /* Slightly less padding than modal input */
+  padding: 6px 10px;
   border: 1px solid #3d3d3d;
-  border-radius: 4px; /* Slightly smaller border-radius */
-  font-size: 0.9rem; /* Slightly smaller font size */
+  border-radius: 4px;
+  font-size: 0.9rem;
   background-color: #252525;
   color: #e0e0e0;
   transition: all 0.2s ease;
+  max-width: 100%; /* Ограничиваем максимальную ширину */
+  text-overflow: ellipsis; /* Добавляем многоточие */
+  white-space: nowrap; /* Запрещаем перенос текста */
+  overflow: hidden; /* Скрываем выходящий за пределы текст */
 }
 
 .settings-panel-input:focus {
@@ -143,6 +152,37 @@
 
 .settings-panel-input::placeholder {
   color: #666;
+}
+
+/* Стили для выпадающего списка */
+select.settings-panel-input {
+  width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  padding-right: 20px; /* Место для стрелки выпадающего списка */
+}
+
+/* Стили для опций в выпадающем списке */
+select.settings-panel-input option {
+  width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 4px 8px;
+}
+
+/* Стили для выпадающего списка при наведении/фокусе */
+select.settings-panel-input:hover,
+select.settings-panel-input:focus {
+  overflow: visible;
+}
+
+select.settings-panel-input:hover option,
+select.settings-panel-input:focus option {
+  width: auto;
+  min-width: 100%;
+  white-space: normal;
 }
 
 .settings-panel-color-input {
@@ -167,4 +207,15 @@
 .settings-panel-color-input::-webkit-color-swatch {
   border: none;
   border-radius: 2px;
+}
+
+/* Разрешаем выделение текста только для input и select */
+.settings-panel-input,
+select.settings-panel-input,
+input[type="text"],
+input[type="color"] {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 } 

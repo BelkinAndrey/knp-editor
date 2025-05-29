@@ -9,6 +9,8 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [populationLabel, setPopulationLabel] = useState(''); // State for population label input
   const [populationColor, setPopulationColor] = useState('#000000'); // Добавляем состояние для цвета
   const [edgeColor, setEdgeColor] = useState('#000000'); // Добавляем состояние для цвета проекции
+  const [neuronType, setNeuronType] = useState('BLIFATNeuron'); // Новое состояние для типа нейрона
+  const [neuronCount, setNeuronCount] = useState('1'); // Новое состояние для количества нейронов
   
   // Добавляем массив предустановленных цветов
   const presetColors = [
@@ -107,6 +109,61 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                 </div>
               </div>
             </div>
+            
+            <div className="settings-section-separator"></div>
+            <h3 style={{ margin: '10px 0', fontSize: '1em', color: '#FFFFFF' }}>Neuron</h3>
+            <div className="setting-item">
+              <span className="setting-label">Neuron type:</span>
+              <select
+                value={neuronType}
+                onChange={(e) => {
+                  const newType = e.target.value;
+                  setNeuronType(newType);
+                  if (onElementSettingsChange && selectedElement) {
+                    onElementSettingsChange(selectedElement.id, { neuronType: newType });
+                  }
+                }}
+                className="settings-panel-input"
+              >
+                <option value="BLIFATNeuron">BLIFATNeuron</option>
+                <option value="SynapticResourceSTDPNeuron">SynapticResourceSTDPNeuron</option>
+                <option value="AltAILIF">AltAILIF</option>
+              </select>
+            </div>
+            <div className="setting-item">
+              <span className="setting-label">Neuron pcs:</span>
+              <input
+                type="text"
+                value={neuronCount}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Разрешаем только цифры и пустую строку
+                  if (value === '' || /^\d+$/.test(value)) {
+                    const numValue = parseInt(value) || 0;
+                    // Обновляем только если число положительное или это пустая строка
+                    if (numValue > 0 || value === '') {
+                      setNeuronCount(value);
+                      if (onElementSettingsChange && selectedElement) {
+                        onElementSettingsChange(selectedElement.id, { 
+                          neuronCount: value === '' ? 1 : numValue 
+                        });
+                      }
+                    }
+                  }
+                }}
+                onBlur={(e) => {
+                  // При потере фокуса, если поле пустое или значение 0, устанавливаем 1
+                  if (!e.target.value || parseInt(e.target.value) === 0) {
+                    setNeuronCount('1');
+                    if (onElementSettingsChange && selectedElement) {
+                      onElementSettingsChange(selectedElement.id, { neuronCount: 1 });
+                    }
+                  }
+                }}
+                className="settings-panel-input"
+                placeholder="Enter number of neurons"
+              />
+            </div>
           </div>
         )}
 
@@ -157,7 +214,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
         )}
       </div>
     );
-  }, [selectedElement, populationLabel, populationColor, edgeColor]);
+  }, [selectedElement, populationLabel, populationColor, edgeColor, neuronType, neuronCount]);
 
   // Effect to set initial states when selectedElement changes
   useEffect(() => {
@@ -165,6 +222,8 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       if (selectedElement.type === 'population') {
         setPopulationLabel(selectedElement.data?.label || '');
         setPopulationColor(selectedElement.data?.color || '#000000');
+        setNeuronType(selectedElement.data?.neuronType || 'BLIFATNeuron');
+        setNeuronCount(selectedElement.data?.neuronCount?.toString() || '1');
       } else if (selectedElement.type === 'edge') {
         setEdgeColor(selectedElement.data?.color || '#000000');
       }
@@ -172,6 +231,8 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       setPopulationLabel('');
       setPopulationColor('#000000');
       setEdgeColor('#000000');
+      setNeuronType('BLIFATNeuron');
+      setNeuronCount('1');
     }
   }, [selectedElement]);
 
