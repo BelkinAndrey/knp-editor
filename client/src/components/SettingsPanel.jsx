@@ -10,6 +10,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [isNeuronParamsCollapsed, setIsNeuronParamsCollapsed] = useState(false);
   const panelRef = useRef(null);
   const [populationLabel, setPopulationLabel] = useState(''); // State for population label input
+  const [inputOutputLabel, setInputOutputLabel] = useState(''); // Новое состояние для метки input/output
   const [populationColor, setPopulationColor] = useState('#000000'); // Добавляем состояние для цвета
   const [edgeColor, setEdgeColor] = useState('#000000'); // Добавляем состояние для цвета проекции
   const [neuronType, setNeuronType] = useState('BLIFATNeuron'); // Новое состояние для типа нейрона
@@ -47,6 +48,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     if (!selectedElement) {
       // Сбрасываем состояние при отсутствии выбранного элемента
       setPopulationLabel('');
+      setInputOutputLabel(''); // Добавляем сброс метки input/output
       setPopulationColor('#000000');
       setEdgeColor('#000000');
       setNeuronType('BLIFATNeuron');
@@ -145,6 +147,10 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
         }));
         setPopulationEdgePanels(updatedPanels);
       }
+    } else if (selectedElement.type === 'input' || selectedElement.type === 'output') {
+      const elementData = selectedElement.data || {};
+      const newLabel = elementData.label || '';
+      setInputOutputLabel(newLabel);
     } else if (selectedElement.type === 'edge') {
       const elementData = selectedElement.data || {};
       const newColor = elementData.color || '#000000';
@@ -613,6 +619,18 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     console.log('Add reverse projection clicked for population:', selectedElement.id);
   }, [selectedElement]);
 
+  // Добавляем обработчик изменения метки для input/output
+  const handleInputOutputLabelChange = useCallback((newValue) => {
+    if (!selectedElement) return;
+    
+    const value = newValue.replace(/\s+/g, '');
+    setInputOutputLabel(value);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      label: value
+    });
+  }, [selectedElement, onElementSettingsChange]);
+
   return (
     <>
       {/* Button for collapsing/expanding */}
@@ -837,6 +855,21 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                         >
                           Add reverse projection
                         </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {(selectedElement.type === 'input' || selectedElement.type === 'output') && (
+                    <div className="input-output-settings-content">
+                      <div className="setting-item">
+                        <span className="setting-label">Name:</span>
+                        <input
+                          type="text"
+                          value={inputOutputLabel}
+                          onChange={(e) => handleInputOutputLabelChange(e.target.value)}
+                          placeholder="Enter name (no spaces allowed)"
+                          className="settings-panel-input"
+                        />
                       </div>
                     </div>
                   )}
