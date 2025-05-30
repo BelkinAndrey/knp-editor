@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import './SettingsPanel.css'; // Import styles for the settings panel and button
 import NeuronParamsPanel from './NeuronParamsPanel';
+import EdgeParamsPanel from './EdgeParamsPanel';
 
 const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings, onElementSettingsChange }) => {
   const [panelWidth, setPanelWidth] = useState(initialPanelWidth); // Initial panel width from props
@@ -14,6 +15,9 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [neuronType, setNeuronType] = useState('BLIFATNeuron'); // Новое состояние для типа нейрона
   const [neuronCount, setNeuronCount] = useState('1'); // Новое состояние для количества нейронов
   const [neuronParams, setNeuronParams] = useState({}); // Новое состояние для параметров нейрона
+  const [edgeType, setEdgeType] = useState('BasicSynapse'); // Новое состояние для типа синапса
+  const [edgeParams, setEdgeParams] = useState({}); // Новое состояние для параметров синапса
+  const [isEdgeParamsCollapsed, setIsEdgeParamsCollapsed] = useState(false); // Состояние для сворачивания панели параметров синапса
   
   // Флаги для отслеживания изменений
   const isInitialMount = useRef(true);
@@ -24,7 +28,9 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     neuronCount: '',
     populationLabel: '',
     populationColor: '',
-    edgeColor: ''
+    edgeColor: '',
+    edgeType: '',
+    edgeParams: {}
   });
 
   // Эффект для инициализации состояния при изменении selectedElement
@@ -45,6 +51,9 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       setNeuronCount('1');
       setNeuronParams({});
       setIsNeuronParamsCollapsed(false);
+      setEdgeType('BasicSynapse');
+      setEdgeParams({});
+      setIsEdgeParamsCollapsed(false);
       return;
     }
 
@@ -117,8 +126,56 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
         });
       }
     } else if (selectedElement.type === 'edge') {
-      const newColor = selectedElement.data?.color || '#000000';
+      const elementData = selectedElement.data || {};
+      const newColor = elementData.color || '#000000';
+      const newEdgeType = elementData.edgeType || 'BasicSynapse';
+      setIsEdgeParamsCollapsed(elementData.isEdgeParamsCollapsed || false);
+      
+      // Получаем параметры синапса для текущего типа
+      let edgeTypeParams = {};
+      
+      if (elementData.edgeParams) {
+        if (elementData.edgeParams[newEdgeType]) {
+          edgeTypeParams = { ...elementData.edgeParams[newEdgeType] };
+        } else {
+          // Инициализируем значения по умолчанию в зависимости от типа
+          switch (newEdgeType) {
+            case 'DeltaSynapse':
+              edgeTypeParams = {
+                weight_: 1.0,
+                delay_: 0
+              };
+              break;
+            case 'AdditiveSTDPDeltaSynapse':
+              edgeTypeParams = {
+                weight_: 1.0,
+                delay_: 0
+              };
+              break;
+            case 'SynapticResourceSTDPDeltaSynapse':
+              edgeTypeParams = {
+                weight_: 1.0,
+                delay_: 0
+              };
+              break;
+            default:
+              edgeTypeParams = {};
+          }
+        }
+      }
+      
       setEdgeColor(newColor);
+      setEdgeType(newEdgeType);
+      setEdgeParams(edgeTypeParams);
+
+      // Если параметры были инициализированы значениями по умолчанию, обновляем их
+      if (!elementData.edgeParams?.[newEdgeType]) {
+        onElementSettingsChange?.(selectedElement.id, {
+          edgeParams: {
+            [newEdgeType]: edgeTypeParams
+          }
+        });
+      }
     }
   }, [selectedElement?.id, onElementSettingsChange]);
 
@@ -231,6 +288,14 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     });
   }, [selectedElement, onElementSettingsChange]);
 
+  const handleAddGenerator = useCallback(() => {
+    if (!selectedElement) return;
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      addGenerator: true
+    });
+  }, [selectedElement, onElementSettingsChange]);
+
   // Добавляем массив предустановленных цветов
   const presetColors = [
     '#FFFFFF', // белый
@@ -323,6 +388,74 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     if (selectedElement && onElementSettingsChange) {
       onElementSettingsChange(selectedElement.id, {
         isNeuronParamsCollapsed: newCollapsedState
+      });
+    }
+  }, [selectedElement, onElementSettingsChange]);
+
+  // Добавляем обработчик изменения типа синапса
+  const handleEdgeTypeChange = useCallback((newType) => {
+    if (!selectedElement) return;
+    
+    setEdgeType(newType);
+    setEdgeParams({});
+    
+    // Инициализируем параметры по умолчанию для нового типа
+    let defaultParams = {};
+    switch (newType) {
+      case 'DeltaSynapse':
+        defaultParams = {
+          weight_: 1.0,
+          delay_: 0
+        };
+        break;
+      case 'AdditiveSTDPDeltaSynapse':
+        defaultParams = {
+          weight_: 1.0,
+          delay_: 0,
+        };
+        break;
+      case 'SynapticResourceSTDPDeltaSynapse':
+        defaultParams = {
+          weight_: 1.0,
+          delay_: 0,
+        };
+        break;
+      default:
+        defaultParams = {};
+    }
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      edgeType: newType,
+      edgeParams: {
+        [newType]: defaultParams
+      }
+    });
+  }, [selectedElement, onElementSettingsChange]);
+
+  // Добавляем обработчик изменения параметров синапса
+  const handleEdgeParamChange = useCallback((paramName, value) => {
+    if (!selectedElement) return;
+    
+    const newParams = {
+      ...edgeParams,
+      [paramName]: value
+    };
+    
+    setEdgeParams(newParams);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      edgeParams: {
+        [edgeType]: newParams
+      }
+    });
+  }, [selectedElement, edgeParams, edgeType, onElementSettingsChange]);
+
+  // Добавляем обработчик изменения состояния свернутости панели параметров синапса
+  const handleEdgeParamsCollapseChange = useCallback((newCollapsedState) => {
+    setIsEdgeParamsCollapsed(newCollapsedState);
+    if (selectedElement && onElementSettingsChange) {
+      onElementSettingsChange(selectedElement.id, {
+        isEdgeParamsCollapsed: newCollapsedState
       });
     }
   }, [selectedElement, onElementSettingsChange]);
@@ -468,6 +601,45 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                             <span style={{ marginLeft: '4px' }}>)</span>
                           </div>
                         </div>
+                      </div>
+                      <div className="settings-section-separator"></div>
+                      <div className="setting-item">
+                        <span className="setting-label">Synapse type:</span>
+                        <select
+                          value={edgeType}
+                          onChange={(e) => handleEdgeTypeChange(e.target.value)}
+                          className="settings-panel-input"
+                        >
+                          <option value="DeltaSynapse">DeltaSynapse</option>
+                          <option value="AdditiveSTDPDeltaSynapse">AdditiveSTDPDeltaSynapse</option>
+                          <option value="SynapticResourceSTDPDeltaSynapse">SynapticResourceSTDPDeltaSynapse</option>
+                        </select>
+                      </div>
+                      <div className="settings-section-separator"></div>
+                      <EdgeParamsPanel
+                        edgeType={edgeType}
+                        params={edgeParams}
+                        onChange={handleEdgeParamChange}
+                        isCollapsed={isEdgeParamsCollapsed}
+                        onCollapseChange={handleEdgeParamsCollapseChange}
+                      />
+                      <div className="settings-section-separator"></div>
+                      <div className="setting-item" style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
+                        <button 
+                          onClick={handleAddGenerator}
+                          className="settings-panel-button"
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#4a4a4a',
+                            color: 'white',
+                            border: '1px solid #666',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.9em'
+                          }}
+                        >
+                          Add generator
+                        </button>
                       </div>
                     </div>
                   )}
