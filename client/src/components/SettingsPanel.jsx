@@ -19,6 +19,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [edgeParams, setEdgeParams] = useState({}); // Новое состояние для параметров синапса
   const [isEdgeParamsCollapsed, setIsEdgeParamsCollapsed] = useState(false); // Состояние для сворачивания панели параметров синапса
   const [edgePanels, setEdgePanels] = useState([]); // Новое состояние для хранения панелей параметров проекции
+  const [populationEdgePanels, setPopulationEdgePanels] = useState([]); // Новое состояние для хранения панелей проекций в популяции
   
   // Флаги для отслеживания изменений
   const isInitialMount = useRef(true);
@@ -125,6 +126,24 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
             [newNeuronType]: neuronTypeParams
           }
         });
+      }
+
+      // Инициализируем панели проекций из данных элемента
+      const panels = elementData.populationEdgePanels || [];
+      
+      // Если панелей нет, создаем пустой массив
+      if (panels.length === 0) {
+        setPopulationEdgePanels([]);
+      } else {
+        // Проверяем и добавляем параметры по умолчанию для существующих панелей
+        const updatedPanels = panels.map(panel => ({
+          ...panel,
+          edgeParams: {
+            ...getDefaultEdgeParams(panel.edgeType),
+            ...panel.edgeParams
+          }
+        }));
+        setPopulationEdgePanels(updatedPanels);
       }
     } else if (selectedElement.type === 'edge') {
       const elementData = selectedElement.data || {};
@@ -363,6 +382,65 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     });
   }, [selectedElement, edgePanels, onElementSettingsChange]);
 
+  // Добавляем обработчики для панелей проекций в популяции
+  const handleAddPopulationEdgePanel = useCallback(() => {
+    if (!selectedElement) return;
+    
+    const defaultType = 'DeltaSynapse';
+    const newPanel = {
+      id: Date.now(),
+      edgeType: defaultType,
+      edgeParams: getDefaultEdgeParams(defaultType),
+      isCollapsed: false
+    };
+    
+    const updatedPanels = [...populationEdgePanels, newPanel];
+    setPopulationEdgePanels(updatedPanels);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      populationEdgePanels: updatedPanels
+    });
+  }, [selectedElement, populationEdgePanels, onElementSettingsChange]);
+
+  const handleRemovePopulationEdgePanel = useCallback((panelId) => {
+    if (!selectedElement) return;
+    
+    const updatedPanels = populationEdgePanels.filter(panel => panel.id !== panelId);
+    setPopulationEdgePanels(updatedPanels);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      populationEdgePanels: updatedPanels
+    });
+  }, [selectedElement, populationEdgePanels, onElementSettingsChange]);
+
+  const handlePopulationEdgePanelChange = useCallback((panelId, changes) => {
+    if (!selectedElement) return;
+    
+    const updatedPanels = populationEdgePanels.map(panel => {
+      if (panel.id === panelId) {
+        // Если меняется тип синапса, добавляем параметры по умолчанию
+        if (changes.edgeType) {
+          return {
+            ...panel,
+            ...changes,
+            edgeParams: {
+              ...getDefaultEdgeParams(changes.edgeType),
+              ...panel.edgeParams
+            }
+          };
+        }
+        return { ...panel, ...changes };
+      }
+      return panel;
+    });
+    
+    setPopulationEdgePanels(updatedPanels);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      populationEdgePanels: updatedPanels
+    });
+  }, [selectedElement, populationEdgePanels, onElementSettingsChange]);
+
   // Добавляем массив предустановленных цветов
   const presetColors = [
     '#FFFFFF', // белый
@@ -527,6 +605,14 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     }
   }, [selectedElement, onElementSettingsChange]);
 
+  const handleAddReverseProjection = useCallback(() => {
+    if (!selectedElement) return;
+    
+    // Здесь будет логика добавления обратной проекции
+    // TODO: Реализовать логику создания обратной проекции
+    console.log('Add reverse projection clicked for population:', selectedElement.id);
+  }, [selectedElement]);
+
   return (
     <>
       {/* Button for collapsing/expanding */}
@@ -633,7 +719,125 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                         isCollapsed={isNeuronParamsCollapsed}
                         onCollapseChange={handleNeuronParamsCollapseChange}
                       />
-                      <div className="settings-section-separator"></div>
+                      
+                      {(populationEdgePanels.length > 0 || true) && (
+                        <div className="settings-section-separator"></div>
+                      )}
+                      
+                      {populationEdgePanels.map((panel, index) => (
+                        <div key={panel.id}>
+                          <div className="edge-panel-header" style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            margin: '10px 0'
+                          }}>
+                            <h3 style={{ 
+                              margin: '0', 
+                              fontSize: '1em', 
+                              color: '#FFFFFF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '16px'
+                            }}>
+                              Reverse projection #{index + 1}
+                            </h3>
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '16px' 
+                            }}>
+                              {populationEdgePanels.length > 0 && (
+                                <button
+                                  onClick={() => handleRemovePopulationEdgePanel(panel.id)}
+                                  className="delete-button"
+                                  style={{
+                                    padding: '0',
+                                    backgroundColor: 'transparent',
+                                    color: '#ff4444',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '4px',
+                                    transition: 'background-color 0.2s',
+                                    lineHeight: '1'
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 68, 68, 0.1)'}
+                                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                  
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handlePopulationEdgePanelChange(panel.id, { isCollapsed: !panel.isCollapsed })}
+                                className="collapse-button"
+                                style={{
+                                  padding: '0',
+                                  backgroundColor: 'transparent',
+                                  color: '#888',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '12px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '24px',
+                                  height: '24px',
+                                  borderRadius: '4px',
+                                  transition: 'background-color 0.2s'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(136, 136, 136, 0.1)'}
+                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                {panel.isCollapsed ? '▲' : '▼'}
+                              </button>
+                            </div>
+                          </div>
+                          <EdgeParamsPanel
+                            edgeType={panel.edgeType}
+                            params={panel.edgeParams}
+                            onChange={(paramName, value) => {
+                              const newParams = { ...panel.edgeParams, [paramName]: value };
+                              handlePopulationEdgePanelChange(panel.id, { edgeParams: newParams });
+                            }}
+                            isCollapsed={panel.isCollapsed}
+                            onCollapseChange={(newCollapsed) => {
+                              handlePopulationEdgePanelChange(panel.id, { isCollapsed: newCollapsed });
+                            }}
+                            onEdgeTypeChange={(newType) => {
+                              handlePopulationEdgePanelChange(panel.id, { edgeType: newType });
+                            }}
+                          />
+                          {index < populationEdgePanels.length - 1 && <div className="settings-section-separator"></div>}
+                        </div>
+                      ))}
+                      
+                      {populationEdgePanels.length > 0 && (
+                        <div className="settings-section-separator"></div>
+                      )}
+                      
+                      <div className="setting-item" style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
+                        <button 
+                          onClick={handleAddPopulationEdgePanel}
+                          className="settings-panel-button"
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#4a4a4a',
+                            color: 'white',
+                            border: '1px solid #666',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.9em'
+                          }}
+                        >
+                          Add reverse projection
+                        </button>
+                      </div>
                     </div>
                   )}
 
