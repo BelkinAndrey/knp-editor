@@ -18,6 +18,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [edgeType, setEdgeType] = useState('DeltaSynapse'); // Новое состояние для типа синапса
   const [edgeParams, setEdgeParams] = useState({}); // Новое состояние для параметров синапса
   const [isEdgeParamsCollapsed, setIsEdgeParamsCollapsed] = useState(false); // Состояние для сворачивания панели параметров синапса
+  const [edgePanels, setEdgePanels] = useState([]); // Новое состояние для хранения панелей параметров проекции
   
   // Флаги для отслеживания изменений
   const isInitialMount = useRef(true);
@@ -129,53 +130,35 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       const elementData = selectedElement.data || {};
       const newColor = elementData.color || '#000000';
       const newEdgeType = elementData.edgeType || 'DeltaSynapse';
-      setIsEdgeParamsCollapsed(elementData.isEdgeParamsCollapsed || false);
       
-      // Получаем параметры синапса для текущего типа
-      let edgeTypeParams = {};
+      // Инициализируем панели из данных элемента
+      const panels = elementData.edgePanels || [];
       
-      if (elementData.edgeParams) {
-        if (elementData.edgeParams[newEdgeType]) {
-          edgeTypeParams = { ...elementData.edgeParams[newEdgeType] };
-        } else {
-          // Инициализируем значения по умолчанию в зависимости от типа
-          switch (newEdgeType) {
-            case 'DeltaSynapse':
-              edgeTypeParams = {
-                weight_: 1.0,
-                delay_: 0
-              };
-              break;
-            case 'AdditiveSTDPDeltaSynapse':
-              edgeTypeParams = {
-                weight_: 1.0,
-                delay_: 0
-              };
-              break;
-            case 'SynapticResourceSTDPDeltaSynapse':
-              edgeTypeParams = {
-                weight_: 1.0,
-                delay_: 0
-              };
-              break;
-            default:
-              edgeTypeParams = {};
+      // Если панелей нет, создаем первую по умолчанию
+      if (panels.length === 0) {
+        const defaultPanel = {
+          id: Date.now(),
+          edgeType: newEdgeType,
+          edgeParams: getDefaultEdgeParams(newEdgeType),
+          isCollapsed: false
+        };
+        setEdgePanels([defaultPanel]);
+        onElementSettingsChange?.(selectedElement.id, {
+          edgePanels: [defaultPanel]
+        });
+      } else {
+        // Проверяем и добавляем параметры по умолчанию для существующих панелей
+        const updatedPanels = panels.map(panel => ({
+          ...panel,
+          edgeParams: {
+            ...getDefaultEdgeParams(panel.edgeType),
+            ...panel.edgeParams
           }
-        }
+        }));
+        setEdgePanels(updatedPanels);
       }
       
       setEdgeColor(newColor);
-      setEdgeType(newEdgeType);
-      setEdgeParams(edgeTypeParams);
-
-      // Если параметры были инициализированы значениями по умолчанию, обновляем их
-      if (!elementData.edgeParams?.[newEdgeType]) {
-        onElementSettingsChange?.(selectedElement.id, {
-          edgeParams: {
-            [newEdgeType]: edgeTypeParams
-          }
-        });
-      }
     }
   }, [selectedElement?.id, onElementSettingsChange]);
 
@@ -288,13 +271,97 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     });
   }, [selectedElement, onElementSettingsChange]);
 
+  // Добавляем функцию для получения параметров по умолчанию
+  const getDefaultEdgeParams = (edgeType) => {
+    switch (edgeType) {
+      case 'DeltaSynapse':
+        return {
+          weight_: 1.0,
+          delay_: 0
+        };
+      case 'AdditiveSTDPDeltaSynapse':
+        return {
+          weight_: 1.0,
+          delay_: 0,
+          tau_plus_: 10,
+          tau_minus_: 10,
+          OutputType: 'EXCITATORY',
+          train: true
+        };
+      case 'SynapticResourceSTDPDeltaSynapse':
+        return {
+          weight_: 1.0,
+          delay_: 0,
+          synaptic_resource_: 0,
+          w_min_: 0,
+          w_max_: 1,
+          d_u_: 0,
+          dopamine_plasticity_period_: 0,
+          OutputType: 'EXCITATORY',
+          train: true
+        };
+      default:
+        return {};
+    }
+  };
+
   const handleAddGenerator = useCallback(() => {
     if (!selectedElement) return;
     
+    const defaultType = 'DeltaSynapse';
+    const newPanel = {
+      id: Date.now(),
+      edgeType: defaultType,
+      edgeParams: getDefaultEdgeParams(defaultType),
+      isCollapsed: false
+    };
+    
+    const updatedPanels = [...edgePanels, newPanel];
+    setEdgePanels(updatedPanels);
+    
     onElementSettingsChange?.(selectedElement.id, {
-      addGenerator: true
+      edgePanels: updatedPanels
     });
-  }, [selectedElement, onElementSettingsChange]);
+  }, [selectedElement, edgePanels, onElementSettingsChange]);
+
+  const handleRemovePanel = useCallback((panelId) => {
+    if (!selectedElement) return;
+    
+    const updatedPanels = edgePanels.filter(panel => panel.id !== panelId);
+    setEdgePanels(updatedPanels);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      edgePanels: updatedPanels
+    });
+  }, [selectedElement, edgePanels, onElementSettingsChange]);
+
+  const handlePanelChange = useCallback((panelId, changes) => {
+    if (!selectedElement) return;
+    
+    const updatedPanels = edgePanels.map(panel => {
+      if (panel.id === panelId) {
+        // Если меняется тип синапса, добавляем параметры по умолчанию
+        if (changes.edgeType) {
+          return {
+            ...panel,
+            ...changes,
+            edgeParams: {
+              ...getDefaultEdgeParams(changes.edgeType),
+              ...panel.edgeParams
+            }
+          };
+        }
+        return { ...panel, ...changes };
+      }
+      return panel;
+    });
+    
+    setEdgePanels(updatedPanels);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      edgePanels: updatedPanels
+    });
+  }, [selectedElement, edgePanels, onElementSettingsChange]);
 
   // Добавляем массив предустановленных цветов
   const presetColors = [
@@ -603,15 +670,59 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                         </div>
                       </div>
                       <div className="settings-section-separator"></div>
-                      <EdgeParamsPanel
-                        edgeType={edgeType}
-                        params={edgeParams}
-                        onChange={handleEdgeParamChange}
-                        isCollapsed={isEdgeParamsCollapsed}
-                        onCollapseChange={handleEdgeParamsCollapseChange}
-                        onEdgeTypeChange={handleEdgeTypeChange}
-                      />
-                      <div className="settings-section-separator"></div>
+                      
+                      {edgePanels.map((panel, index) => (
+                        <div key={panel.id}>
+                          <div className="edge-panel-header">
+                            <h3 style={{ margin: '10px 0', fontSize: '1em', color: '#FFFFFF' }}>
+                              Projection {index + 1}
+                            </h3>
+                            {edgePanels.length > 1 && (
+                              <button
+                                onClick={() => handleRemovePanel(panel.id)}
+                                className="delete-button"
+                                style={{
+                                  padding: '0',
+                                  backgroundColor: 'transparent',
+                                  color: '#ff4444',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  fontSize: '16px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  width: '24px',
+                                  height: '24px',
+                                  borderRadius: '4px',
+                                  transition: 'background-color 0.2s',
+                                  lineHeight: '1'
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 68, 68, 0.1)'}
+                                onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                
+                              </button>
+                            )}
+                          </div>
+                          <EdgeParamsPanel
+                            edgeType={panel.edgeType}
+                            params={panel.edgeParams}
+                            onChange={(paramName, value) => {
+                              const newParams = { ...panel.edgeParams, [paramName]: value };
+                              handlePanelChange(panel.id, { edgeParams: newParams });
+                            }}
+                            isCollapsed={panel.isCollapsed}
+                            onCollapseChange={(newCollapsed) => {
+                              handlePanelChange(panel.id, { isCollapsed: newCollapsed });
+                            }}
+                            onEdgeTypeChange={(newType) => {
+                              handlePanelChange(panel.id, { edgeType: newType });
+                            }}
+                          />
+                          {index < edgePanels.length - 1 && <div className="settings-section-separator"></div>}
+                        </div>
+                      ))}
+                      
                       <div className="setting-item" style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
                         <button 
                           onClick={handleAddGenerator}
@@ -626,7 +737,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                             fontSize: '0.9em'
                           }}
                         >
-                          Add generator
+                          Add projection generator
                         </button>
                       </div>
                     </div>

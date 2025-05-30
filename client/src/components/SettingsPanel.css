@@ -236,4 +236,19 @@ input[type="color"] {
   -webkit-user-select: text;
   -moz-user-select: text;
   -ms-user-select: text;
+}
+
+
+.edge-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.remove-panel-button {
+  transition: background-color 0.2s;
+}
+
+.remove-panel-button:hover {
+  background-color: #ff6666 !important;
 } 
