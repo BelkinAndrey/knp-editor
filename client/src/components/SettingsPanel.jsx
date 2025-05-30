@@ -6,6 +6,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [panelWidth, setPanelWidth] = useState(initialPanelWidth); // Initial panel width from props
   const [isResizing, setIsResizing] = useState(false);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(initialPanelCollapsed); // Collapsed/expanded state
+  const [isNeuronParamsCollapsed, setIsNeuronParamsCollapsed] = useState(false);
   const panelRef = useRef(null);
   const [populationLabel, setPopulationLabel] = useState(''); // State for population label input
   const [populationColor, setPopulationColor] = useState('#000000'); // Добавляем состояние для цвета
@@ -43,6 +44,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       setNeuronType('BLIFATNeuron');
       setNeuronCount('1');
       setNeuronParams({});
+      setIsNeuronParamsCollapsed(false);
       return;
     }
 
@@ -56,6 +58,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       const newColor = elementData.color || '#000000';
       const newNeuronType = elementData.neuronType || 'BLIFATNeuron';
       const newNeuronCount = (elementData.neuronCount || 1).toString();
+      setIsNeuronParamsCollapsed(elementData.isNeuronParamsCollapsed || false);
       
       // Получаем параметры нейрона для текущего типа
       let neuronTypeParams = {};
@@ -314,6 +317,16 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     }
   };
 
+  // Обработчик изменения состояния свернутости панели параметров нейрона
+  const handleNeuronParamsCollapseChange = useCallback((newCollapsedState) => {
+    setIsNeuronParamsCollapsed(newCollapsedState);
+    if (selectedElement && onElementSettingsChange) {
+      onElementSettingsChange(selectedElement.id, {
+        isNeuronParamsCollapsed: newCollapsedState
+      });
+    }
+  }, [selectedElement, onElementSettingsChange]);
+
   return (
     <>
       {/* Button for collapsing/expanding */}
@@ -417,7 +430,10 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                         neuronType={neuronType}
                         params={neuronParams}
                         onChange={handleNeuronParamChange}
+                        isCollapsed={isNeuronParamsCollapsed}
+                        onCollapseChange={handleNeuronParamsCollapseChange}
                       />
+                      <div className="settings-section-separator"></div>
                     </div>
                   )}
 

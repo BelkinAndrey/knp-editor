@@ -1,7 +1,7 @@
 import React from 'react';
 import './NeuronParamsPanel.css';
 
-const NeuronParamsPanel = ({ neuronType, params, onChange }) => {
+const NeuronParamsPanel = ({ neuronType, params, onChange, isCollapsed, onCollapseChange }) => {
   // Конфигурация параметров для каждого типа нейрона
   const neuronParamsConfig = {
     BLIFATNeuron: [
@@ -304,41 +304,46 @@ const NeuronParamsPanel = ({ neuronType, params, onChange }) => {
 
   return (
     <div>
-      <h2 className="neuron-params-title">Neuron parameters</h2>
-      {currentParamsConfig.map(param => (
-        <div key={param.name} className="neuron-param-item">
-          <div className="neuron-param-label-container">
-            <span className="neuron-param-label">{param.label}</span>
-            <span className="param-description" title={param.description}>ⓘ</span>
-          </div>
-          {param.type === 'bool' ? (
-            <div className="checkbox-container">
+      <div className="neuron-params-header" onClick={() => onCollapseChange(!isCollapsed)}>
+        <h2 className="neuron-params-title">Neuron parameters</h2>
+        <span className={`collapse-arrow ${isCollapsed ? 'collapsed' : ''}`}>▼</span>
+      </div>
+      <div className={`neuron-params-content ${isCollapsed ? 'collapsed' : ''}`}>
+        {currentParamsConfig.map(param => (
+          <div key={param.name} className="neuron-param-item">
+            <div className="neuron-param-label-container">
+              <span className="neuron-param-label">{param.label}</span>
+              <span className="param-description" title={param.description}>ⓘ</span>
+            </div>
+            {param.type === 'bool' ? (
+              <div className="checkbox-container">
+                <input
+                  type="checkbox"
+                  checked={params[param.name] ?? param.default}
+                  onChange={(e) => onChange(param.name, e.target.checked)}
+                  className="settings-panel-input"
+                />
+                <span className="checkbox-label">{params[param.name] ?? param.default ? 'true' : 'false'}</span>
+              </div>
+            ) : (
               <input
-                type="checkbox"
-                checked={params[param.name] ?? param.default}
-                onChange={(e) => onChange(param.name, e.target.checked)}
+                type="number"
+                value={params[param.name] ?? param.default}
+                onChange={(e) => {
+                  const value = param.type === 'int' 
+                    ? parseInt(e.target.value) 
+                    : parseFloat(e.target.value);
+                  if (!isNaN(value)) {
+                    onChange(param.name, value);
+                  }
+                }}
+                step={param.type === 'int' ? 1 : 'any'}
                 className="settings-panel-input"
               />
-              <span className="checkbox-label">{params[param.name] ?? param.default ? 'true' : 'false'}</span>
-            </div>
-          ) : (
-            <input
-              type="number"
-              value={params[param.name] ?? param.default}
-              onChange={(e) => {
-                const value = param.type === 'int' 
-                  ? parseInt(e.target.value) 
-                  : parseFloat(e.target.value);
-                if (!isNaN(value)) {
-                  onChange(param.name, value);
-                }
-              }}
-              step={param.type === 'int' ? 1 : 'any'}
-              className="settings-panel-input"
-            />
-          )}
-        </div>
-      ))}
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
