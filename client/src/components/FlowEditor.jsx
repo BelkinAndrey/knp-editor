@@ -51,7 +51,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           position: loadedSchema.position || [0, 0],
           zoom: loadedSchema.zoom || 1,
           isPanelCollapsed: loadedSchema.isPanelCollapsed || false, // Передаем загруженное состояние
-          panelWidth: loadedSchema.panelWidth || 300 // Передаем загруженную ширину
+          panelWidth: loadedSchema.panelWidth || 300, // Передаем загруженную ширину
+          globalParams: loadedSchema.globalParams || []
         });
       } catch (error) {
         console.error('Error loading autosave data:', error);
@@ -66,7 +67,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
             position: [0, 0],
             zoom: 1,
             isPanelCollapsed: false, // Состояние панели по умолчанию
-            panelWidth: 300 // Ширина панели по умолчанию
+            panelWidth: 300, // Ширина панели по умолчанию
+            globalParams: []
           });
            // Устанавливаем начальные состояния панели и ширины
            setIsPanelCollapsedState(false);
@@ -350,6 +352,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const handleElementSettingsChange = useCallback((elementId, updatedData) => {
     const isEdge = edges.some(edge => edge.id === elementId);
     
+    if (elementId === 'global') {
+      // Обработка изменений гиперпараметров
+      onSchemaChange(prevSchema => ({
+        ...prevSchema,
+        globalParams: updatedData.globalParams
+      }));
+      return;
+    }
+    
     if (isEdge) {
       const newEdges = edges.map(edge => {
         if (edge.id === elementId) {
@@ -461,6 +472,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           initialPanelWidth={panelWidthState}
           onSaveSettings={handleSavePanelSettings}
           onElementSettingsChange={handleElementSettingsChange}
+          currentSchema={currentSchema}
         />
       </ReactFlow>
       {contextMenu.show && (

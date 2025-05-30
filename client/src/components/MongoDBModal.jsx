@@ -60,7 +60,8 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
         zoom: currentSchema.zoom,
         position: currentSchema.position,
         isPanelCollapsed: currentSchema.isPanelCollapsed,
-        panelWidth: currentSchema.panelWidth
+        panelWidth: currentSchema.panelWidth,
+        globalParams: currentSchema.globalParams || []
       });
 
       setNewFileName('');
@@ -136,17 +137,12 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
                             id: String(edge.id),
                             source: String(edge.source),
                             target: String(edge.target)
-                          })) : []
+                          })) : [],
+                          zoom: schema.zoom,
+                          position: schema.position,
+                          globalParams: schema.globalParams || []
                         };
                         
-                        // Include zoom and position if they exist in the fetched schema
-                        if (schema.zoom !== undefined) {
-                          schemaData.zoom = schema.zoom;
-                        }
-                        if (schema.position !== undefined) {
-                          schemaData.position = schema.position;
-                        }
-
                         // Include panel settings if they exist in the fetched schema
                         if (schema.isPanelCollapsed !== undefined) {
                           schemaData.isPanelCollapsed = schema.isPanelCollapsed;

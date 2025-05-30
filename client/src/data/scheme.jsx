@@ -1,4 +1,5 @@
 export const Scheme = {
   nodes: [],
-  edges: []
+  edges: [],
+  globalParams: []
 };

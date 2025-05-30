@@ -3,7 +3,7 @@ import './SettingsPanel.css'; // Import styles for the settings panel and button
 import NeuronParamsPanel from './NeuronParamsPanel';
 import EdgeParamsPanel from './EdgeParamsPanel';
 
-const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings, onElementSettingsChange }) => {
+const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings, onElementSettingsChange, currentSchema }) => {
   const [panelWidth, setPanelWidth] = useState(initialPanelWidth); // Initial panel width from props
   const [isResizing, setIsResizing] = useState(false);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(initialPanelCollapsed); // Collapsed/expanded state
@@ -21,7 +21,19 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [isEdgeParamsCollapsed, setIsEdgeParamsCollapsed] = useState(false); // Состояние для сворачивания панели параметров синапса
   const [edgePanels, setEdgePanels] = useState([]); // Новое состояние для хранения панелей параметров проекции
   const [populationEdgePanels, setPopulationEdgePanels] = useState([]); // Новое состояние для хранения панелей проекций в популяции
+  const [globalParams, setGlobalParams] = useState([]); // Состояние для глобальных параметров
+  const [showAddParamMenu, setShowAddParamMenu] = useState(false); // Состояние для отображения меню добавления параметра
+  const [newParamType, setNewParamType] = useState('float'); // Тип нового параметра
+  const [newParamName, setNewParamName] = useState('name_parameter'); // Изменяем начальное значение
+  const [newParamValue, setNewParamValue] = useState(''); // Значение нового параметра
   
+  // Эффект для инициализации globalParams при изменении currentSchema
+  useEffect(() => {
+    if (currentSchema?.globalParams) {
+      setGlobalParams(currentSchema.globalParams);
+    }
+  }, [currentSchema?.globalParams]);
+
   // Флаги для отслеживания изменений
   const isInitialMount = useRef(true);
   const prevElementIdRef = useRef(null);
@@ -631,6 +643,101 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     });
   }, [selectedElement, onElementSettingsChange]);
 
+  // Функция для получения дефолтного значения по типу
+  const getDefaultValueByType = useCallback((type) => {
+    switch (type) {
+      case 'float':
+        return '0.0';
+      case 'int':
+        return '0';
+      case 'bool':
+        return false;
+      default:
+        return '';
+    }
+  }, []);
+
+  // Обработчик изменения типа параметра
+  const handleParamTypeChange = useCallback((type) => {
+    setNewParamType(type);
+    setNewParamValue(getDefaultValueByType(type));
+  }, [getDefaultValueByType]);
+
+  // Обновляем обработчик показа формы добавления параметра
+  const handleShowAddParamMenu = useCallback(() => {
+    setShowAddParamMenu(true);
+    setNewParamName('name_parameter'); // Устанавливаем дефолтное значение
+    setNewParamValue(getDefaultValueByType(newParamType));
+  }, [newParamType, getDefaultValueByType]);
+
+  // Обновим обработчик изменения значения параметра
+  const handleGlobalParamChange = useCallback((paramId, newValue) => {
+    const param = globalParams.find(p => p.id === paramId);
+    if (!param) return;
+
+    // Для булевых значений преобразуем строки в булевы значения
+    let finalValue = newValue;
+    if (param.type === 'bool') {
+      finalValue = typeof newValue === 'string' ? newValue === 'true' : Boolean(newValue);
+    }
+
+    const updatedParams = globalParams.map(p => 
+      p.id === paramId ? { ...p, value: finalValue } : p
+    );
+    setGlobalParams(updatedParams);
+    onElementSettingsChange?.('global', { globalParams: updatedParams });
+  }, [globalParams, onElementSettingsChange]);
+
+  // Обновим обработчик изменения значения в форме добавления
+  const handleNewParamValueChange = useCallback((value) => {
+    if (newParamType === 'bool') {
+      // Преобразуем значение в булево
+      const boolValue = typeof value === 'string' ? value === 'true' : Boolean(value);
+      setNewParamValue(boolValue);
+      return;
+    }
+    setNewParamValue(value);
+  }, [newParamType]);
+
+  // Обновим обработчик добавления нового параметра
+  const handleAddGlobalParam = useCallback(() => {
+    if (!newParamName.trim()) return;
+
+    // Для булевых значений преобразуем в булево значение
+    let finalValue = newParamValue;
+    if (newParamType === 'bool') {
+      finalValue = typeof newParamValue === 'string' ? newParamValue === 'true' : Boolean(newParamValue);
+    }
+
+    const newParam = {
+      id: Date.now(),
+      name: newParamName.trim(),
+      type: newParamType,
+      value: finalValue
+    };
+
+    const updatedParams = [...globalParams, newParam];
+    setGlobalParams(updatedParams);
+    
+    onElementSettingsChange?.('global', {
+      globalParams: updatedParams
+    });
+
+    setNewParamName('name_parameter');
+    setNewParamValue(getDefaultValueByType(newParamType));
+    setShowAddParamMenu(false);
+  }, [globalParams, newParamName, newParamType, newParamValue, onElementSettingsChange, getDefaultValueByType]);
+
+  // Добавляем обработчик удаления глобального параметра
+  const handleRemoveGlobalParam = useCallback((paramId) => {
+    const updatedParams = globalParams.filter(param => param.id !== paramId);
+    setGlobalParams(updatedParams);
+    
+    onElementSettingsChange?.('global', {
+      globalParams: updatedParams
+    });
+  }, [globalParams, onElementSettingsChange]);
+
   return (
     <>
       {/* Button for collapsing/expanding */}
@@ -646,7 +753,238 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
           <div className="settings-panel-container" style={{ pointerEvents: isVisible && !isPanelCollapsed ? 'auto' : 'none' }} ref={panelRef}>
             <div className="settings-panel">
               <h2>Settings {elementTypeDisplay}</h2>
-              {selectedElement && (
+              {!selectedElement ? (
+                <div className="global-params-content">
+                  <h3 style={{ margin: '10px 0', fontSize: '1em', color: '#FFFFFF' }}>Global Parameters</h3>
+                  
+                  {/* Список существующих параметров */}
+                  {globalParams.map((param) => (
+                    <div key={param.id} className="global-param-item" style={{ marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ 
+                          color: '#888', 
+                          fontSize: '0.8em', 
+                          padding: '2px 6px', 
+                          backgroundColor: '#333', 
+                          borderRadius: '4px',
+                          minWidth: '45px',
+                          textAlign: 'center'
+                        }}>
+                          {param.type}
+                        </span>
+                        <input
+                          type="text"
+                          value={param.name}
+                          disabled
+                          className="settings-panel-input"
+                          style={{ flex: 1 }}
+                        />
+                        <div style={{ width: '120px', display: 'flex' }}>
+                          {param.type === 'bool' ? (
+                            <div className="checkbox-container" style={{ 
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              width: 'auto'
+                            }}>
+                              <input
+                                type="checkbox"
+                                checked={param.value === true}
+                                onChange={(e) => handleGlobalParamChange(param.id, e.target.checked)}
+                                className="settings-panel-input"
+                                style={{
+                                  width: '16px',
+                                  height: '16px',
+                                  minWidth: '16px',
+                                  margin: '0',
+                                  padding: '0',
+                                  appearance: 'none',
+                                  WebkitAppearance: 'none',
+                                  MozAppearance: 'none',
+                                  backgroundColor: param.value ? '#29CCB1' : 'transparent',
+                                  border: '1px solid #666',
+                                  borderRadius: '3px',
+                                  cursor: 'pointer',
+                                  position: 'relative',
+                                  boxSizing: 'border-box',
+                                  flexShrink: 0
+                                }}
+                              />
+                              <span style={{ 
+                                color: '#888',
+                                fontSize: '0.9em',
+                                userSelect: 'none'
+                              }}>
+                                {param.value === true ? 'true' : 'false'}
+                              </span>
+                            </div>
+                          ) : (
+                            <input
+                              type="text"
+                              value={param.value}
+                              onChange={(e) => handleGlobalParamChange(param.id, e.target.value)}
+                              className="settings-panel-input"
+                              style={{ width: '100%' }}
+                            />
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleRemoveGlobalParam(param.id)}
+                          className="delete-button"
+                          style={{
+                            padding: '0',
+                            backgroundColor: 'transparent',
+                            color: '#ff4444',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '4px',
+                            transition: 'background-color 0.2s',
+                            lineHeight: '1'
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 68, 68, 0.1)'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        >
+                          
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Форма добавления нового параметра */}
+                  {showAddParamMenu ? (
+                    <div className="add-param-form" style={{ marginTop: '10px', padding: '10px', border: '1px solid #444', borderRadius: '4px' }}>
+                      <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
+                        <select
+                          value={newParamType}
+                          onChange={(e) => handleParamTypeChange(e.target.value)}
+                          className="settings-panel-input"
+                          style={{ width: '100px' }}
+                        >
+                          <option value="float">float</option>
+                          <option value="int">int</option>
+                          <option value="bool">bool</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={newParamName}
+                          onChange={(e) => setNewParamName(e.target.value)}
+                          placeholder="Parameter name"
+                          className="settings-panel-input"
+                          style={{ flex: 1 }}
+                        />
+                        <div style={{ width: '120px', display: 'flex' }}>
+                          {newParamType === 'bool' ? (
+                            <div className="checkbox-container" style={{ 
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              width: 'auto'
+                            }}>
+                              <input
+                                type="checkbox"
+                                checked={newParamValue === true}
+                                onChange={(e) => handleNewParamValueChange(e.target.checked)}
+                                className="settings-panel-input"
+                                style={{
+                                  width: '16px',
+                                  height: '16px',
+                                  minWidth: '16px',
+                                  margin: '0',
+                                  padding: '0',
+                                  appearance: 'none',
+                                  WebkitAppearance: 'none',
+                                  MozAppearance: 'none',
+                                  backgroundColor: newParamValue ? '#29CCB1' : 'transparent',
+                                  border: '1px solid #666',
+                                  borderRadius: '3px',
+                                  cursor: 'pointer',
+                                  position: 'relative',
+                                  boxSizing: 'border-box',
+                                  flexShrink: 0
+                                }}
+                              />
+                              <span style={{ 
+                                color: '#888',
+                                fontSize: '0.9em',
+                                userSelect: 'none'
+                              }}>
+                                {newParamValue === true ? 'true' : 'false'}
+                              </span>
+                            </div>
+                          ) : (
+                            <input
+                              type="text"
+                              value={newParamValue}
+                              onChange={(e) => handleNewParamValueChange(e.target.value)}
+                              placeholder={newParamType === 'float' ? '0.0' : '0'}
+                              className="settings-panel-input"
+                              style={{ width: '100%' }}
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => {
+                            setShowAddParamMenu(false);
+                            setNewParamName('');
+                            setNewParamValue('');
+                          }}
+                          className="settings-panel-button"
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#666',
+                            color: 'white',
+                            border: '1px solid #666',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleAddGlobalParam}
+                          className="settings-panel-button"
+                          style={{
+                            padding: '4px 8px',
+                            backgroundColor: '#4a4a4a',
+                            color: 'white',
+                            border: '1px solid #666',
+                            borderRadius: '4px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
+                      <button
+                        onClick={handleShowAddParamMenu}
+                        className="settings-panel-button"
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: '#4a4a4a',
+                          color: 'white',
+                          border: '1px solid #666',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.9em'
+                        }}
+                      >
+                        Add parameter
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
                 <div className="element-settings">
                   <div style={{ color: '#888', fontSize: '0.8em', height: '30px' }}>
                     <span className="setting-label">ID: {selectedElement.id}</span>
