@@ -17,7 +17,7 @@ const OutputNode = ({ data, selected }) => {
         position={Position.Left}
         style={{ background: '#555', width: 10, height: 10, borderRadius: '2px' }}
       />
-      <div style={{ fontWeight: 300 }}>
+      <div style={{ fontWeight: 300, fontSize: '1.3em' }}>
         {data.label || 'Выход'}
       </div>
     </div>

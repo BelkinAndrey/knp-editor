@@ -140,10 +140,6 @@ const EdgeParamsPanel = ({ edgeType, params, onChange, isCollapsed, onCollapseCh
 
   return (
     <div>
-      <div className="neuron-params-header" onClick={() => onCollapseChange(!isCollapsed)}>
-        <h2 className="neuron-params-title">Projection parameters</h2>
-        <span className={`collapse-arrow ${isCollapsed ? 'collapsed' : ''}`}>▼</span>
-      </div>
       <div className={`neuron-params-content ${isCollapsed ? 'collapsed' : ''}`}>
         <div className="neuron-param-item">
           <div className="neuron-param-label-container">

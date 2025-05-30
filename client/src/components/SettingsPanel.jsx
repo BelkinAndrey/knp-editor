@@ -673,36 +673,77 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                       
                       {edgePanels.map((panel, index) => (
                         <div key={panel.id}>
-                          <div className="edge-panel-header">
-                            <h3 style={{ margin: '10px 0', fontSize: '1em', color: '#FFFFFF' }}>
-                              Projection {index + 1}
+                          <div className="edge-panel-header" style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            margin: '10px 0'
+                          }}>
+                            <h3 style={{ 
+                              margin: '0', 
+                              fontSize: '1em', 
+                              color: '#FFFFFF',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '16px'
+                            }}>
+                              Projection parameters #{index + 1}
                             </h3>
-                            {edgePanels.length > 1 && (
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '16px' 
+                            }}>
+                              {edgePanels.length > 1 && (
+                                <button
+                                  onClick={() => handleRemovePanel(panel.id)}
+                                  className="delete-button"
+                                  style={{
+                                    padding: '0',
+                                    backgroundColor: 'transparent',
+                                    color: '#ff4444',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '24px',
+                                    height: '24px',
+                                    borderRadius: '4px',
+                                    transition: 'background-color 0.2s',
+                                    lineHeight: '1'
+                                  }}
+                                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 68, 68, 0.1)'}
+                                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                  
+                                </button>
+                              )}
                               <button
-                                onClick={() => handleRemovePanel(panel.id)}
-                                className="delete-button"
+                                onClick={() => handlePanelChange(panel.id, { isCollapsed: !panel.isCollapsed })}
+                                className="collapse-button"
                                 style={{
                                   padding: '0',
                                   backgroundColor: 'transparent',
-                                  color: '#ff4444',
+                                  color: '#888',
                                   border: 'none',
                                   cursor: 'pointer',
-                                  fontSize: '16px',
+                                  fontSize: '12px',
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   width: '24px',
                                   height: '24px',
                                   borderRadius: '4px',
-                                  transition: 'background-color 0.2s',
-                                  lineHeight: '1'
+                                  transition: 'background-color 0.2s'
                                 }}
-                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 68, 68, 0.1)'}
+                                onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(136, 136, 136, 0.1)'}
                                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               >
-                                
+                                {panel.isCollapsed ? '▲' : '▼'}
                               </button>
-                            )}
+                            </div>
                           </div>
                           <EdgeParamsPanel
                             edgeType={panel.edgeType}
@@ -723,6 +764,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                         </div>
                       ))}
                       
+                      <div className="settings-section-separator"></div>
                       <div className="setting-item" style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
                         <button 
                           onClick={handleAddGenerator}

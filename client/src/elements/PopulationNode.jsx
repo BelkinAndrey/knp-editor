@@ -12,12 +12,12 @@ const PopulationNode = ({ data, selected }) => {
     }}>
       <div style={{ 
         fontWeight: 300,
-        width: '80px',
-        height: '20px',
+        width: '150px',
+        height: '25px',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
-        fontSize: '1.1em',
+        fontSize: '1.4em',
         textAlign: 'center',
         color: data.color || 'var(--text-color)'
       }}>
