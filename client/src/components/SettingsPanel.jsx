@@ -15,7 +15,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const [neuronType, setNeuronType] = useState('BLIFATNeuron'); // Новое состояние для типа нейрона
   const [neuronCount, setNeuronCount] = useState('1'); // Новое состояние для количества нейронов
   const [neuronParams, setNeuronParams] = useState({}); // Новое состояние для параметров нейрона
-  const [edgeType, setEdgeType] = useState('BasicSynapse'); // Новое состояние для типа синапса
+  const [edgeType, setEdgeType] = useState('DeltaSynapse'); // Новое состояние для типа синапса
   const [edgeParams, setEdgeParams] = useState({}); // Новое состояние для параметров синапса
   const [isEdgeParamsCollapsed, setIsEdgeParamsCollapsed] = useState(false); // Состояние для сворачивания панели параметров синапса
   
@@ -51,7 +51,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       setNeuronCount('1');
       setNeuronParams({});
       setIsNeuronParamsCollapsed(false);
-      setEdgeType('BasicSynapse');
+      setEdgeType('DeltaSynapse');
       setEdgeParams({});
       setIsEdgeParamsCollapsed(false);
       return;
@@ -128,7 +128,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     } else if (selectedElement.type === 'edge') {
       const elementData = selectedElement.data || {};
       const newColor = elementData.color || '#000000';
-      const newEdgeType = elementData.edgeType || 'BasicSynapse';
+      const newEdgeType = elementData.edgeType || 'DeltaSynapse';
       setIsEdgeParamsCollapsed(elementData.isEdgeParamsCollapsed || false);
       
       // Получаем параметры синапса для текущего типа
@@ -603,25 +603,13 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                         </div>
                       </div>
                       <div className="settings-section-separator"></div>
-                      <div className="setting-item">
-                        <span className="setting-label">Synapse type:</span>
-                        <select
-                          value={edgeType}
-                          onChange={(e) => handleEdgeTypeChange(e.target.value)}
-                          className="settings-panel-input"
-                        >
-                          <option value="DeltaSynapse">DeltaSynapse</option>
-                          <option value="AdditiveSTDPDeltaSynapse">AdditiveSTDPDeltaSynapse</option>
-                          <option value="SynapticResourceSTDPDeltaSynapse">SynapticResourceSTDPDeltaSynapse</option>
-                        </select>
-                      </div>
-                      <div className="settings-section-separator"></div>
                       <EdgeParamsPanel
                         edgeType={edgeType}
                         params={edgeParams}
                         onChange={handleEdgeParamChange}
                         isCollapsed={isEdgeParamsCollapsed}
                         onCollapseChange={handleEdgeParamsCollapseChange}
+                        onEdgeTypeChange={handleEdgeTypeChange}
                       />
                       <div className="settings-section-separator"></div>
                       <div className="setting-item" style={{ marginTop: '10px', display: 'flex', justifyContent: 'center' }}>
