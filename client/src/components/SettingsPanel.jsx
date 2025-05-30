@@ -286,16 +286,10 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const handleNeuronCountChange = useCallback((value) => {
     if (!selectedElement) return;
     
-    if (value === '' || /^\d+$/.test(value)) {
-      const numValue = parseInt(value) || 0;
-      if (numValue > 0 || value === '') {
-        setNeuronCount(value);
-        
-        onElementSettingsChange?.(selectedElement.id, {
-          neuronCount: numValue || 1
-        });
-      }
-    }
+    setNeuronCount(value);
+    onElementSettingsChange?.(selectedElement.id, {
+      neuronCount: value === '' ? 1 : parseFloat(value)
+    });
   }, [selectedElement, onElementSettingsChange]);
 
   const handleEdgeColorChange = useCallback((newColor) => {
@@ -1055,14 +1049,6 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                           type="text"
                           value={neuronCount}
                           onChange={(e) => handleNeuronCountChange(e.target.value)}
-                          onBlur={(e) => {
-                            if (!e.target.value || parseInt(e.target.value) === 0) {
-                              setNeuronCount('1');
-                              if (selectedElement) {
-                                onElementSettingsChange?.(selectedElement.id, { neuronCount: 1 });
-                              }
-                            }
-                          }}
                           className="settings-panel-input"
                           placeholder="Enter number of neurons"
                         />
