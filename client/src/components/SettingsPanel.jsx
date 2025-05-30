@@ -405,6 +405,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                           placeholder="Enter number of neurons"
                         />
                       </div>
+                      <div className="settings-section-separator"></div>
                       <NeuronParamsPanel
                         neuronType={neuronType}
                         params={neuronParams}

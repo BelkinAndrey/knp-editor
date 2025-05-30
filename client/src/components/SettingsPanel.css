@@ -3,7 +3,7 @@
   top: 20px;
   bottom: 20px;
   right: 20px;
-  min-width: 355px; /* Заменяем width на min-width */
+  min-width: 525px; /* Заменяем width на min-width */
   z-index: 10;
   user-select: none; /* Запрещаем выделение текста */
   -webkit-user-select: none; /* Для Safari */
@@ -15,7 +15,7 @@
 }
 
 .settings-panel-wrapper.collapsed {
-  right: -400px; /* Увеличиваем отступ, чтобы панель полностью скрывалась */
+  right: -525px; /* Увеличиваем отступ до минимальной ширины панели */
   /* Можно также использовать width: 0; overflow: hidden; в зависимости от реализации */
 }
 

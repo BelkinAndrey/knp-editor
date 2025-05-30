@@ -303,11 +303,12 @@ const NeuronParamsPanel = ({ neuronType, params, onChange }) => {
   const currentParamsConfig = neuronParamsConfig[neuronType] || [];
 
   return (
-    <div className="neuron-params-panel">
+    <div>
+      <h2 className="neuron-params-title">Neuron parameters</h2>
       {currentParamsConfig.map(param => (
-        <div key={param.name} className="setting-item">
-          <div className="setting-label-container">
-            <span className="setting-label">{param.label}</span>
+        <div key={param.name} className="neuron-param-item">
+          <div className="neuron-param-label-container">
+            <span className="neuron-param-label">{param.label}</span>
             <span className="param-description" title={param.description}>ⓘ</span>
           </div>
           {param.type === 'bool' ? (
