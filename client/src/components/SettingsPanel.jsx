@@ -238,6 +238,13 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     '#FF00FF', // пурпурный
     '#00FFFF', // голубой
     '#808080', // серый
+    '#FFA500', // оранжевый
+    '#800080', // фиолетовый
+    '#008000', // темно-зеленый
+    '#800000', // темно-красный
+    '#000080', // темно-синий
+    '#FFD700', // золотой
+    '#A52A2A', // коричневый
   ];
 
   // Memoize element type display
@@ -344,7 +351,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                       </div>
                       <div className="setting-item">
                         <span className="setting-label">Color:</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
                           <input
                             type="color"
                             value={populationColor}
@@ -418,7 +425,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                     <div className="edge-settings-content">
                       <div className="setting-item">
                         <span className="setting-label">Color:</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
                           <input
                             type="color"
                             value={edgeColor}

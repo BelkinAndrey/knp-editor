@@ -38,5 +38,49 @@
   margin-bottom: 5px;
 }
 
+/* Стили для чекбоксов */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+}
+
+.checkbox-label {
+  color: #666;
+  font-size: 0.9em;
+  user-select: none;
+  display: inline-block;
+  vertical-align: middle;
+  padding-top: 1px;
+}
+
+.neuron-param-item input[type="checkbox"] {
+  margin: 0;
+  padding: 0;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #252525;
+  border: 1px solid #3d3d3d;
+  border-radius: 2px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.neuron-param-item input[type="checkbox"]:checked {
+  background-color: #29CCB1;
+  border-color: #29CCB1;
+}
+
+.neuron-param-item input[type="checkbox"]:hover {
+  border-color: #29CCB1;
+}
+
 
 

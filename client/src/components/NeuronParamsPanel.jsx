@@ -312,12 +312,15 @@ const NeuronParamsPanel = ({ neuronType, params, onChange }) => {
             <span className="param-description" title={param.description}>ⓘ</span>
           </div>
           {param.type === 'bool' ? (
-            <input
-              type="checkbox"
-              checked={params[param.name] ?? param.default}
-              onChange={(e) => onChange(param.name, e.target.checked)}
-              className="settings-panel-input"
-            />
+            <div className="checkbox-container">
+              <input
+                type="checkbox"
+                checked={params[param.name] ?? param.default}
+                onChange={(e) => onChange(param.name, e.target.checked)}
+                className="settings-panel-input"
+              />
+              <span className="checkbox-label">{params[param.name] ?? param.default ? 'true' : 'false'}</span>
+            </div>
           ) : (
             <input
               type="number"
