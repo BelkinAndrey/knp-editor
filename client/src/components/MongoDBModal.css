@@ -12,7 +12,7 @@
 }
 
 .modal-content {
-  background: #1e1e1e;
+  background: #252525;
   border-radius: 12px;
   width: 90%;
   max-width: 600px;
@@ -23,11 +23,10 @@
 }
 
 .modal-header {
-  padding: 16px;
-  border-bottom: 1px solid #2d2d2d;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background: #252525;
 }
 
 .modal-header h2 {
