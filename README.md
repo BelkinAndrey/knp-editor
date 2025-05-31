@@ -1,83 +1,85 @@
 # KNP Editor
 
-Редактор для работы с файлами, разработанный с использованием современных веб-технологий.
+Network configuration editor for https://github.com/KasperskyLab/knp
 
-## Требования
+![Application Screenshot](img/screen.jpg)
 
-- Node.js (версия 18 или выше)
-- npm (версия 9 или выше)
+## Requirements
 
-## Структура проекта
+- Node.js (version 18 or higher)
+- npm (version 9 or higher)
 
-Проект состоит из двух основных частей:
-- `client/` - клиентская часть (React + Vite)
-- `server/` - серверная часть (Node.js + Express)
+## Project Structure
 
-## Установка и запуск
+The project consists of two main parts:
+- `client/` - client-side (React + Vite)
+- `server/` - server-side (Node.js + Express)
 
-### 1. Клонирование репозитория
+## Installation and Running
+
+### 1. Clone the Repository
 
 ```bash
-git clone <url-репозитория>
+git clone <repository-url>
 cd kaspersky-editor
 ```
 
-### 2. Установка зависимостей
+### 2. Install Dependencies
 
-#### Клиентская часть
+#### Client-side
 ```bash
 cd client
 npm install
 ```
 
-#### Серверная часть
+#### Server-side
 ```bash
 cd server
 npm install
 ```
 
-### 3. Запуск приложения
+### 3. Run the Application
 
-#### Запуск сервера
+#### Start the Server
 ```bash
 cd server
 npm start 
-    или 
+    or 
 npm run dev
 ```
-Сервер запустится на порту 3000 (http://localhost:3000)
+The server will start on port 3000 (http://localhost:3000)
 
-#### Запуск клиента
+#### Start the Client
 ```bash
 cd client
 npm run dev
 ```
-Клиентское приложение будет доступно по адресу http://localhost:5173
+The client application will be available at http://localhost:5173
 
-## Разработка
+## Development
 
-### Клиентская часть
-- Использует React с Vite для быстрой разработки
-- ESLint настроен для поддержания качества кода
-- Основной код находится в директории `client/src`
+### Client-side
+- Uses React with Vite for fast development
+- ESLint is configured for code quality maintenance
+- Main code is located in the `client/src` directory
 
-### Серверная часть
-- Построена на Node.js с использованием Express
-- Основной файл сервера: `server/index.js`
+### Server-side
+- Built on Node.js using Express
+- Main server file: `server/index.js`
 
-## Скрипты
+## Scripts
 
-### Клиентская часть
-- `npm run dev` - запуск сервера разработки
-- `npm run build` - сборка проекта
-- `npm run lint` - проверка кода линтером
+### Client-side
+- `npm run dev` - start development server
+- `npm run build` - build the project
+- `npm run lint` - run code linter
 
-### Серверная часть
-- `npm start` - запуск сервера
-- `npm run dev` - запуск сервера в режиме разработки с автоматической перезагрузкой
+### Server-side
+- `npm start` - start the server
+- `npm run dev` - start the server in development mode with auto-reload
 
-## Примечания
+## Notes
 
-- Убедитесь, что порты 3000 (сервер) и 5173 (клиент) свободны перед запуском
-- Для корректной работы приложения необходимо запустить обе части (клиент и сервер)
-- В режиме разработки клиент автоматически перезагружается при изменении кода 
+- Make sure ports 3000 (server) and 5173 (client) are available before starting
+- Both parts (client and server) must be running for the application to work correctly
+- In development mode, the client automatically reloads when code changes 
