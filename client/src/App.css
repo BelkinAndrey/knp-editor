@@ -127,7 +127,7 @@
 
 @keyframes selectedEdgeDash {
   to {
-    stroke-dashoffset: 16;
+    stroke-dashoffset: -16;
   }
 }
 
