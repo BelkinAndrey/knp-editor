@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import ReactFlow, { Controls, Background, Handle, Position, ReactFlowProvider, applyEdgeChanges, applyNodeChanges, useReactFlow, addEdge } from 'reactflow';
+import ReactFlow, { Controls, Background, Handle, Position, ReactFlowProvider, applyEdgeChanges, applyNodeChanges, useReactFlow, addEdge, MarkerType } from 'reactflow';
 import 'reactflow/dist/style.css';
 import ContextMenu from './ContextMenu';
 import InputNode from '../elements/InputNode';
@@ -162,13 +162,19 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
 
   const onConnect = useCallback(
     (params) => {
+      // Определяем цвет для новой связи
+      const strokeColor = 'var(--border-color)';
       const newEdge = {
         ...params,
-        animated: true,
-        type: 'default',
+        animated: false,
+        type: 'arrow',
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: strokeColor,
+        },
         style: { 
           strokeWidth: 2,
-          stroke: 'var(--border-color)'
+          stroke: strokeColor
         },
         data: {
           strokeWidth: 2 // Добавляем в data для сохранения
@@ -364,11 +370,18 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     if (isEdge) {
       const newEdges = edges.map(edge => {
         if (edge.id === elementId) {
+          // Если меняется цвет, обновляем и markerEnd.color
+          const newStroke = updatedData.color || edge.style?.stroke || 'var(--border-color)';
           return {
             ...edge,
             style: { 
               ...edge.style,
-              stroke: updatedData.color || edge.style?.stroke || 'var(--border-color)'
+              stroke: newStroke
+            },
+            markerEnd: {
+              ...(edge.markerEnd || {}),
+              type: MarkerType.ArrowClosed,
+              color: newStroke
             },
             data: {
               ...edge.data,
@@ -450,8 +463,12 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         selectNodesOnDrag={true}
         deleteKeyCode="Delete"
         defaultEdgeOptions={{
-          animated: true,
-          type: 'default',
+          animated: false,
+          type: 'arrow',
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: 'var(--border-color)',
+          },
           style: { 
             strokeWidth: 2,
             stroke: 'var(--border-color)'
