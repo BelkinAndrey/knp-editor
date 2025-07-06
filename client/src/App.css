@@ -119,8 +119,16 @@
 
 /* Стили для выделенного ребра */
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke-width: 6 !important;
-  filter: brightness(1.2); /* Делаем выделенную связь немного ярче */
+  stroke-width: 2 !important;
+  stroke-dasharray: 8;
+  animation: selectedEdgeDash 0.7s linear infinite;
+  filter: brightness(1.2);
+}
+
+@keyframes selectedEdgeDash {
+  to {
+    stroke-dashoffset: 16;
+  }
 }
 
 /* Стили для коннекторов */
