@@ -11,9 +11,8 @@ mongoose.connect(process.env.MONGO_URI).then(() => {
   console.error('MongoDB connection error:', err);
 });
 
-// модель
-const Scheme = mongoose.model('Scheme', new mongoose.Schema({
-  name: String,
+// Базовая схема для общих полей
+const BaseSchema = new mongoose.Schema({
   nodes: Array,
   edges: Array,
   zoom: Number,
@@ -21,18 +20,16 @@ const Scheme = mongoose.model('Scheme', new mongoose.Schema({
   isPanelCollapsed: Boolean,
   panelWidth: Number,
   globalParams: Array,
+});
+
+// Модель для схем
+const Scheme = mongoose.model('Scheme', new mongoose.Schema({
+  name: String,
+  ...BaseSchema.obj, // Включаем поля из BaseSchema
   createdAt: { type: Date, default: Date.now }
 }));
 
-const SchemaAutoSave = mongoose.model('autosave', new mongoose.Schema({
-  nodes: Array,
-  edges: Array,
-  zoom: Number,
-  position: Array,
-  isPanelCollapsed: Boolean,
-  panelWidth: Number,
-  globalParams: Array
-}));
+const SchemaAutoSave = mongoose.model('autosave', BaseSchema);
 
 // Middleware
 app.use(cors());

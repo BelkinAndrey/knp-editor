@@ -12,20 +12,17 @@ const CodeEditorModal = ({ isOpen, onClose, onSave, currentSchema }) => {
       fetch(codeTemplate)
         .then(response => response.text())
         .then(text => {
-          // Если есть схема, можно использовать её для генерации кода
-          if (currentSchema) {
-            // Здесь можно добавить логику генерации кода на основе схемы
-            setCode(text);
-          } else {
-            setCode(text);
-          }
+          // Использование currentSchema для генерации кода, если это необходимо
+          // В текущей реализации, если схема есть, она просто игнорируется,
+          // а текст загружается из шаблона
+          setCode(text);
         })
         .catch(error => {
-          console.error('Ошибка при загрузке шаблона кода:', error);
+          // console.error('Ошибка при загрузке шаблона кода:', error);
           setCode('// Ошибка при загрузке шаблона кода\n');
         });
     }
-  }, [isOpen, currentSchema]);
+  }, [isOpen]); // Удален currentSchema из зависимостей, так как он не используется для изменения кода здесь
 
   if (!isOpen) return null;
 
@@ -36,11 +33,11 @@ const CodeEditorModal = ({ isOpen, onClose, onSave, currentSchema }) => {
   const handleCopy = () => {
     navigator.clipboard.writeText(code)
       .then(() => {
-        alert('Код скопирован в буфер обмена');
+        // alert('Код скопирован в буфер обмена');
       })
       .catch(err => {
-        console.error('Ошибка при копировании:', err);
-        alert('Не удалось скопировать код');
+        // console.error('Ошибка при копировании:', err);
+        // alert('Не удалось скопировать код');
       });
   };
 

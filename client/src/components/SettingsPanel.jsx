@@ -48,6 +48,51 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     edgeParams: {}
   });
 
+  // Добавляем функцию для получения параметров по умолчанию
+  const getDefaultEdgeParams = useCallback((edgeType) => {
+    switch (edgeType) {
+      case 'DeltaSynapse':
+        return {
+          weight_: 1.0,
+          delay_: 0
+        };
+      case 'AdditiveSTDPDeltaSynapse':
+        return {
+          weight_: 1.0,
+          delay_: 0,
+          tau_plus_: 10,
+          tau_minus_: 10,
+          OutputType: 'EXCITATORY',
+          train: true
+        };
+      case 'SynapticResourceSTDPDeltaSynapse':
+        return {
+          weight_: 1.0,
+          delay_: 0,
+          synaptic_resource_: 0,
+          w_min_: 0,
+          w_max_: 1,
+          d_u_: 0,
+          dopamine_plasticity_period_: 0,
+          OutputType: 'EXCITATORY',
+          train: true
+        };
+      default:
+        return {};
+    }
+  }, []);
+
+  // Вспомогательная функция для обработки панелей проекций (добавление параметров по умолчанию)
+  const processEdgePanels = useCallback((panels) => {
+    return panels.map(panel => ({
+      ...panel,
+      edgeParams: {
+        ...getDefaultEdgeParams(panel.edgeType),
+        ...panel.edgeParams
+      }
+    }));
+  }, [getDefaultEdgeParams]);
+
   // Эффект для инициализации состояния при изменении selectedElement
   useEffect(() => {
     // Если элемент не изменился, не обновляем состояние
@@ -150,14 +195,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
         setPopulationEdgePanels([]);
       } else {
         // Проверяем и добавляем параметры по умолчанию для существующих панелей
-        const updatedPanels = panels.map(panel => ({
-          ...panel,
-          edgeParams: {
-            ...getDefaultEdgeParams(panel.edgeType),
-            ...panel.edgeParams
-          }
-        }));
-        setPopulationEdgePanels(updatedPanels);
+        setPopulationEdgePanels(processEdgePanels(panels));
       }
     } else if (selectedElement.type === 'input' || selectedElement.type === 'output') {
       const elementData = selectedElement.data || {};
@@ -185,19 +223,12 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
         });
       } else {
         // Проверяем и добавляем параметры по умолчанию для существующих панелей
-        const updatedPanels = panels.map(panel => ({
-          ...panel,
-          edgeParams: {
-            ...getDefaultEdgeParams(panel.edgeType),
-            ...panel.edgeParams
-          }
-        }));
-        setEdgePanels(updatedPanels);
+        setEdgePanels(processEdgePanels(panels));
       }
       
       setEdgeColor(newColor);
     }
-  }, [selectedElement?.id, onElementSettingsChange]);
+  }, [selectedElement?.id, onElementSettingsChange, processEdgePanels]); // Добавлен processEdgePanels в зависимости useEffect
 
   // Обработчик изменения параметров нейрона
   const handleNeuronParamChange = useCallback((paramName, value) => {
@@ -301,40 +332,6 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       color: newColor
     });
   }, [selectedElement, onElementSettingsChange]);
-
-  // Добавляем функцию для получения параметров по умолчанию
-  const getDefaultEdgeParams = (edgeType) => {
-    switch (edgeType) {
-      case 'DeltaSynapse':
-        return {
-          weight_: 1.0,
-          delay_: 0
-        };
-      case 'AdditiveSTDPDeltaSynapse':
-        return {
-          weight_: 1.0,
-          delay_: 0,
-          tau_plus_: 10,
-          tau_minus_: 10,
-          OutputType: 'EXCITATORY',
-          train: true
-        };
-      case 'SynapticResourceSTDPDeltaSynapse':
-        return {
-          weight_: 1.0,
-          delay_: 0,
-          synaptic_resource_: 0,
-          w_min_: 0,
-          w_max_: 1,
-          d_u_: 0,
-          dopamine_plasticity_period_: 0,
-          OutputType: 'EXCITATORY',
-          train: true
-        };
-      default:
-        return {};
-    }
-  };
 
   const handleAddGenerator = useCallback(() => {
     if (!selectedElement) return;
