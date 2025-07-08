@@ -167,7 +167,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       const newEdge = {
         ...params,
         animated: false,
-        type: 'arrow',
+        type: 'default',
         markerEnd: {
           type: MarkerType.ArrowClosed,
           color: strokeColor,
@@ -464,7 +464,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         deleteKeyCode="Delete"
         defaultEdgeOptions={{
           animated: false,
-          type: 'arrow',
+          type: 'default',
           markerEnd: {
             type: MarkerType.ArrowClosed,
             color: 'var(--border-color)',
@@ -476,6 +476,10 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           data: {
             strokeWidth: 2 // Добавляем в defaultEdgeOptions
           }
+        }}
+        onInit={instance => {
+          // console.log('ReactFlow instance initialized:', instance);
+          window.reactFlowInstance = instance; // For debugging purposes
         }}
       >
         <Background />
