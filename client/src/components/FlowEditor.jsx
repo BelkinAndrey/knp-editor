@@ -18,7 +18,7 @@ const nodeTypes = {
   groupNode: GroupNode,
 };
 
-const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
+const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaRef }) => {
   const [nodes, setNodes] = useState([]); // Initialize with empty array, load will populate
   const [edges, setEdges] = useState([]); // Initialize with empty array, load will populate
   const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0 });
@@ -42,6 +42,30 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     globalParams: currentSchema?.globalParams || [],
     flowHistoryStack: currentSchema?.flowHistoryStack || [] // Добавляем flowHistoryStack
   }));
+
+  // Функция для очистки internalSchema
+  const clearInternalSchema = useCallback(() => {
+    setInternalSchema({
+      name: '',
+      nodes: [],
+      edges: [],
+      position: [0, 0],
+      zoom: 1,
+      isPanelCollapsed: false,
+      panelWidth: 300,
+      globalParams: [],
+      flowHistoryStack: []
+    });
+    setNodes([]);
+    setEdges([]);
+  }, []);
+
+  // Пробрасываем функцию наружу через ref
+  React.useEffect(() => {
+    if (clearInternalSchemaRef) {
+      clearInternalSchemaRef.current = clearInternalSchema;
+    }
+  }, [clearInternalSchema, clearInternalSchemaRef]);
 
   // New: Report changes to parent via onSchemaChange
   useEffect(() => {
@@ -628,10 +652,10 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   );
 };
 
-const FlowEditor = ({ currentSchema, onSchemaChange }) => {
+const FlowEditor = ({ currentSchema, onSchemaChange, clearInternalSchemaRef }) => {
   return (
     <ReactFlowProvider>
-      <FlowEditorContent currentSchema={currentSchema} onSchemaChange={onSchemaChange} />
+      <FlowEditorContent currentSchema={currentSchema} onSchemaChange={onSchemaChange} clearInternalSchemaRef={clearInternalSchemaRef} />
     </ReactFlowProvider>
   );
 };
