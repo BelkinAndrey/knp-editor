@@ -28,6 +28,51 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const [panelWidthState, setPanelWidthState] = useState(300); // Состояние ширины панели настроек
   const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
   const [lastMenuOpenTime, setLastMenuOpenTime] = useState(0);
+  const [currentFlowId, setCurrentFlowId] = useState(null); // null означает корневой уровень
+
+  // Вспомогательная функция для получения узлов и ребер текущего потока
+  const getFlowContent = useCallback((flowId) => {
+    if (!flowId) { // Корневой уровень
+      return { nodes: currentSchema.nodes, edges: currentSchema.edges };
+    }
+    const groupNode = currentSchema.nodes.find(n => n.id === flowId);
+    if (groupNode && groupNode.data && groupNode.data.subFlow) {
+      return { nodes: groupNode.data.subFlow.nodes, edges: groupNode.data.subFlow.edges };
+    }
+    return { nodes: [], edges: [] };
+  }, [currentSchema]);
+
+  // Вспомогательная функция для обновления узлов и ребер текущего потока
+  const updateFlowContent = useCallback((flowId, newNodes, newEdges, newPosition, newZoom) => {
+    onSchemaChange(prevSchema => {
+      let updatedSchema = { ...prevSchema };
+      if (!flowId) { // Корневой уровень
+        updatedSchema.nodes = newNodes;
+        updatedSchema.edges = newEdges;
+        updatedSchema.position = newPosition;
+        updatedSchema.zoom = newZoom;
+      } else {
+        updatedSchema.nodes = prevSchema.nodes.map(node => {
+          if (node.id === flowId && node.type === 'groupNode') {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                subFlow: {
+                  nodes: newNodes,
+                  edges: newEdges,
+                  position: newPosition,
+                  zoom: newZoom
+                }
+              }
+            };
+          }
+          return node;
+        });
+      }
+      return updatedSchema;
+    });
+  }, [onSchemaChange]);
 
   // Effect to load autosave data on mount
   useEffect(() => {
@@ -35,90 +80,58 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       try {
         const response = await axios.get('http://localhost:3000/api/autosave');
         const loadedSchema = response.data;
-        // Update the state and propagate changes up
-        setNodes(loadedSchema.nodes || []);
-        setEdges(loadedSchema.edges || []);
-        if (loadedSchema.position !== undefined && loadedSchema.zoom !== undefined) {
-          setViewport({ x: loadedSchema.position[0], y: loadedSchema.position[1], zoom: loadedSchema.zoom });
-        }
-        // Загружаем состояние панели и ширину
+        onSchemaChange(loadedSchema);
+
         setIsPanelCollapsedState(loadedSchema.isPanelCollapsed || false);
         setPanelWidthState(loadedSchema.panelWidth || 300);
 
-        // Also call onSchemaChange to update parent component's state if needed
-        onSchemaChange({
-          name: loadedSchema.name, // Предполагается, что name тоже сохраняется
-          nodes: loadedSchema.nodes || [],
-          edges: loadedSchema.edges || [],
-          position: loadedSchema.position || [0, 0],
-          zoom: loadedSchema.zoom || 1,
-          isPanelCollapsed: loadedSchema.isPanelCollapsed || false, // Передаем загруженное состояние
-          panelWidth: loadedSchema.panelWidth || 300, // Передаем загруженную ширину
-          globalParams: loadedSchema.globalParams || []
-        });
       } catch (error) {
         console.error('Error loading autosave data:', error);
-        // Handle 404 specifically - no autosave data found, which is not an error
         if (error.response && error.response.status === 404) {
           console.log('No autosave data found.');
-          // Initialize with an empty schema if no autosave data
            onSchemaChange({
-            name: '', // Имя по умолчанию
+            name: '',
             nodes: [],
             edges: [],
             position: [0, 0],
             zoom: 1,
-            isPanelCollapsed: false, // Состояние панели по умолчанию
-            panelWidth: 300, // Ширина панели по умолчанию
+            isPanelCollapsed: false,
+            panelWidth: 300,
             globalParams: []
           });
-           // Устанавливаем начальные состояния панели и ширины
            setIsPanelCollapsedState(false);
            setPanelWidthState(300);
-
         } else {
-          // Other errors should be logged or handled
           alert('Failed to load autosave data.');
         }
       }
     };
-
     loadAutosave();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
 
-  // Debounced effect to save schema changes
-  const debouncedSave = useCallback(
-    debounce(async (schemaToSave) => {
-      try {
-        // В schemaToSave уже есть isPanelCollapsed и panelWidth благодаря onSchemaChange
-        await axios.post('http://localhost:3000/api/autosave', schemaToSave);
-      } catch (error) {
-        console.error('Error saving autosave data:', error);
+  // Update local state when currentSchema or currentFlowId changes
+  useEffect(() => {
+    const { nodes: newNodes, edges: newEdges } = getFlowContent(currentFlowId);
+    setNodes(newNodes);
+    setEdges(newEdges);
+
+    let flowPosition = [0, 0];
+    let flowZoom = 1;
+
+    if (!currentFlowId) { // Root level
+      if (currentSchema.position !== undefined && currentSchema.zoom !== undefined) {
+          flowPosition = currentSchema.position;
+          flowZoom = currentSchema.zoom;
       }
-    }, 1000), // 1000ms debounce time
-    [] // Empty dependency array for debounce function
-  );
-
-  // Effect to trigger debounced save when schema changes
-  useEffect(() => {
-    // currentSchema is already updated by onSchemaChange callbacks
-    debouncedSave(currentSchema);
-    // Cleanup function to cancel debounce on unmount or before next effect run
-    return () => {
-      debouncedSave.cancel();
-    };
-  }, [currentSchema, debouncedSave]); // Dependency on currentSchema and debouncedSave
-
-  // Update local state when currentSchema prop changes (e.g., after loading)
-  useEffect(() => {
-    setNodes(currentSchema.nodes);
-    setEdges(currentSchema.edges);
-    // Set viewport only if currentSchema has valid position/zoom
-    if (currentSchema.position !== undefined && currentSchema.zoom !== undefined) {
-        setViewport({ x: currentSchema.position[0], y: currentSchema.position[1], zoom: currentSchema.zoom });
+    } else { // Sub-flow level
+      const groupNode = currentSchema.nodes.find(n => n.id === currentFlowId);
+      if (groupNode && groupNode.data && groupNode.data.subFlow && groupNode.data.subFlow.position !== undefined && groupNode.data.subFlow.zoom !== undefined) {
+        flowPosition = groupNode.data.subFlow.position;
+        flowZoom = groupNode.data.subFlow.zoom;
+      }
     }
-    // Состояния панели и ширины теперь управляются загрузчиком и handleSavePanelSettings
-    // Раскомментируем и обновляем для загрузки из основных файлов
+    setViewport({ x: flowPosition[0], y: flowPosition[1], zoom: flowZoom });
+
     if (currentSchema.isPanelCollapsed !== undefined) {
       setIsPanelCollapsedState(currentSchema.isPanelCollapsed);
     }
@@ -126,45 +139,55 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       setPanelWidthState(currentSchema.panelWidth);
     }
 
-  }, [currentSchema, setViewport]);
+  }, [currentSchema, currentFlowId, setViewport, getFlowContent]);
+
+  // Debounced effect to save schema changes
+  const debouncedSave = useCallback(
+    debounce(async (schemaToSave) => {
+      try {
+        await axios.post('http://localhost:3000/api/autosave', schemaToSave);
+      } catch (error) {
+        console.error('Error saving autosave data:', error);
+      }
+    }, 1000),
+    []
+  );
+
+  // Effect to trigger debounced save when schema changes
+  useEffect(() => {
+    debouncedSave(currentSchema);
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [currentSchema, debouncedSave]);
 
   const onNodesChange = useCallback(
     (changes) => {
-      const newNodes = applyNodeChanges(changes, nodes);
+      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
+      const newNodes = applyNodeChanges(changes, currentLevelNodes);
       setNodes(newNodes);
+
       const viewport = getViewport();
-      // Call onSchemaChange to update the parent state and trigger save effect
-      onSchemaChange({
-        ...currentSchema, // Сохраняем name, isPanelCollapsed, panelWidth
-        nodes: newNodes,
-        edges: edges,
-        position: [viewport.x, viewport.y],
-        zoom: viewport.zoom
-      });
+      updateFlowContent(currentFlowId, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
     },
-    [nodes, edges, onSchemaChange, getViewport, currentSchema],
+    [getFlowContent, currentFlowId, getViewport, updateFlowContent],
   );
 
   const onEdgesChange = useCallback(
     (changes) => {
-      const newEdges = applyEdgeChanges(changes, edges);
+      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
+      const newEdges = applyEdgeChanges(changes, currentLevelEdges);
       setEdges(newEdges);
+
       const viewport = getViewport();
-      // Call onSchemaChange to update the parent state and trigger save effect
-      onSchemaChange({
-        ...currentSchema, // Сохраняем name, isPanelCollapsed, panelWidth
-        nodes: nodes,
-        edges: newEdges,
-        position: [viewport.x, viewport.y],
-        zoom: viewport.zoom
-      });
+      updateFlowContent(currentFlowId, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
     },
-    [nodes, edges, onSchemaChange, getViewport, currentSchema],
+    [getFlowContent, currentFlowId, getViewport, updateFlowContent],
   );
 
   const onConnect = useCallback(
     (params) => {
-      // Определяем цвет для новой связи
+      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
       const strokeColor = 'var(--border-color)';
       const newEdge = {
         ...params,
@@ -174,26 +197,21 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           type: MarkerType.ArrowClosed,
           color: strokeColor,
         },
-        style: { 
+        style: {
           strokeWidth: 2,
           stroke: strokeColor
         },
         data: {
-          strokeWidth: 2 // Добавляем в data для сохранения
+          strokeWidth: 2
         }
       };
-      const newEdges = addEdge(newEdge, edges);
+      const newEdges = addEdge(newEdge, currentLevelEdges);
       setEdges(newEdges);
+
       const viewport = getViewport();
-      onSchemaChange({
-        ...currentSchema,
-        nodes: nodes,
-        edges: newEdges,
-        position: [viewport.x, viewport.y],
-        zoom: viewport.zoom
-      });
+      updateFlowContent(currentFlowId, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
     },
-    [edges, nodes, onSchemaChange, getViewport, currentSchema],
+    [getFlowContent, currentFlowId, getViewport, updateFlowContent],
   );
 
   const onCloseContextMenu = useCallback(() => {
@@ -203,43 +221,38 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const onContextMenu = useCallback((event) => {
     event.preventDefault();
 
-    // Проверяем, был ли клик по контекстному меню или по панели настроек
     const isContextMenuClick = event.target.closest('.context-menu');
-    const isSettingsPanelClick = event.target.closest('.settings-panel-wrapper') || 
+    const isSettingsPanelClick = event.target.closest('.settings-panel-wrapper') ||
                                 event.target.closest('.settings-panel-container') ||
                                 event.target.closest('.settings-panel') ||
                                 event.target.closest('.settings-toggle-button');
 
     if (isContextMenuClick || isSettingsPanelClick) {
-      return; // Если клик был по меню или по панели настроек, ничего не делаем
+      return;
     }
 
-    // Если меню открыто, закрываем его
     if (contextMenu.show) {
       onCloseContextMenu();
       return;
     }
 
-    // Позиционируем меню под курсором
-    const newContextMenu = { 
-      show: true, 
-      x: event.clientX, 
-      y: event.clientY 
+    const newContextMenu = {
+      show: true,
+      x: event.clientX,
+      y: event.clientY
     };
     setContextMenu(newContextMenu);
     setLastMenuOpenTime(Date.now());
   }, [contextMenu.show, onCloseContextMenu]);
 
   const onPaneClick = useCallback((event) => {
-    // Проверяем, был ли клик по узлу или ребру
     const isNodeClick = event.target.closest('.react-flow__node');
     const isEdgeClick = event.target.closest('.react-flow__edge');
-    const isSettingsPanelClick = event.target.closest('.settings-panel-wrapper') || 
+    const isSettingsPanelClick = event.target.closest('.settings-panel-wrapper') ||
                                 event.target.closest('.settings-panel-container') ||
                                 event.target.closest('.settings-panel') ||
                                 event.target.closest('.settings-toggle-button');
 
-    // Если клик был по узлу, ребру или панели настроек, не очищаем selectedElement
     if (isNodeClick || isEdgeClick || isSettingsPanelClick) {
       return;
     }
@@ -251,28 +264,24 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   }, [contextMenu.show, onCloseContextMenu]);
 
   const onMove = useCallback(() => {
-    // Не закрываем меню, если оно было открыто менее 300мс назад
     if (contextMenu.show && Date.now() - lastMenuOpenTime > 300) {
       onCloseContextMenu();
     }
   }, [contextMenu.show, onCloseContextMenu, lastMenuOpenTime]);
 
   const onMoveEnd = useCallback(() => {
-    // Capture viewport state after user finishes moving/zooming
     const viewport = getViewport();
-    // Only update position and zoom, keep existing nodes and edges
-    // Call onSchemaChange to update the parent state and trigger save effect
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
+    updateFlowContent(currentFlowId, currentLevelNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+
     onSchemaChange(prevSchema => ({
       ...prevSchema,
-      position: [viewport.x, viewport.y],
-      zoom: viewport.zoom,
-      isPanelCollapsed: isPanelCollapsedState, // Сохраняем текущее состояние панели
-      panelWidth: panelWidthState // Сохраняем текущую ширину панели
+      isPanelCollapsed: isPanelCollapsedState,
+      panelWidth: panelWidthState
     }));
-  }, [onSchemaChange, getViewport, isPanelCollapsedState, panelWidthState]);
+  }, [onSchemaChange, getViewport, isPanelCollapsedState, panelWidthState, getFlowContent, currentFlowId, updateFlowContent]);
 
   const onContextMenuMouseLeave = useCallback((event) => {
-    // Проверяем, что курсор действительно покинул меню
     const relatedTarget = event.relatedTarget;
     if (!relatedTarget || !relatedTarget.closest('.context-menu')) {
       onCloseContextMenu();
@@ -280,40 +289,33 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   }, [onCloseContextMenu]);
 
   const onCreateNode = useCallback(({ x, y, nodeType }) => {
-    // Преобразуем координаты экрана в координаты потока с учетом зума и панорамирования
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
     const position = screenToFlowPosition({ x, y });
 
     const newNode = {
       id: `node-${Date.now()}`,
       type: nodeType,
       position,
-      data: { 
-        label: nodeType === 'inputNode' ? 'Input' : 
-               nodeType === 'outputNode' ? 'Output' : 
+      data: {
+        label: nodeType === 'inputNode' ? 'Input' :
+               nodeType === 'outputNode' ? 'Output' :
                nodeType === 'populationNode' ? 'Population' :
-               'Group'
+               'Group',
+        ...(nodeType === 'groupNode' && { subFlow: { nodes: [], edges: [] } })
       }
     };
-    const newNodes = [...nodes, newNode];
+    const newNodes = [...currentLevelNodes, newNode];
     setNodes(newNodes);
+
     const viewport = getViewport();
-    // Call onSchemaChange to update the parent state and trigger save effect
-    onSchemaChange({
-      ...currentSchema, // Сохраняем name, isPanelCollapsed, panelWidth
-      nodes: newNodes,
-      edges: edges,
-      position: [viewport.x, viewport.y],
-      zoom: viewport.zoom
-    });
-  }, [nodes, edges, onSchemaChange, screenToFlowPosition, getViewport, currentSchema]);
+    updateFlowContent(currentFlowId, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+  }, [screenToFlowPosition, getFlowContent, currentFlowId, getViewport, updateFlowContent]);
 
   const onNodeClick = useCallback((event, node) => {
-    // Определяем тип узла на основе его type
     const nodeType = node.type === 'inputNode' ? 'input' :
                     node.type === 'outputNode' ? 'output' :
                     node.type === 'populationNode' ? 'population' : 'node';
     
-    // Создаем новый объект, не модифицируя оригинальный node
     const newSelectedElement = {
       type: nodeType,
       id: node.id,
@@ -328,14 +330,13 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   }, [onCloseContextMenu]);
 
   const onEdgeClick = useCallback((event, edge) => {
-    // Создаем новый объект, не модифицируя оригинальный edge
     const newSelectedElement = {
       type: 'edge',
       id: edge.id,
       source: edge.source,
       target: edge.target,
       animated: edge.animated,
-      data: edge.data // Добавляем данные ребра, включая цвет
+      data: edge.data
     };
     
     setSelectedElement(() => newSelectedElement);
@@ -349,7 +350,6 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const handleSavePanelSettings = useCallback(({ isPanelCollapsed, panelWidth }) => {
     setIsPanelCollapsedState(isPanelCollapsed);
     setPanelWidthState(panelWidth);
-    // Обновляем схему с новыми значениями состояния панели и ширины
     onSchemaChange(prevSchema => ({
       ...prevSchema,
       isPanelCollapsed: isPanelCollapsed,
@@ -357,12 +357,11 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     }));
   }, [onSchemaChange]);
 
-  // Обновляем функцию для обработки изменений настроек элемента
   const handleElementSettingsChange = useCallback((elementId, updatedData) => {
-    const isEdge = edges.some(edge => edge.id === elementId);
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
+    const isEdge = currentLevelEdges.some(edge => edge.id === elementId);
     
     if (elementId === 'global') {
-      // Обработка изменений гиперпараметров
       onSchemaChange(prevSchema => ({
         ...prevSchema,
         globalParams: updatedData.globalParams
@@ -371,13 +370,12 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     }
     
     if (isEdge) {
-      const newEdges = edges.map(edge => {
+      const newEdges = currentLevelEdges.map(edge => {
         if (edge.id === elementId) {
-          // Если меняется цвет, обновляем и markerEnd.color
           const newStroke = updatedData.color || edge.style?.stroke || 'var(--border-color)';
           return {
             ...edge,
-            style: { 
+            style: {
               ...edge.style,
               stroke: newStroke
             },
@@ -396,16 +394,9 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       });
       setEdges(newEdges);
       const viewport = getViewport();
-      onSchemaChange(prevSchema => ({
-        ...prevSchema,
-        nodes: nodes,
-        edges: newEdges,
-        position: [viewport.x, viewport.y],
-        zoom: viewport.zoom
-      }));
+      updateFlowContent(currentFlowId, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
     } else {
-      // Обновляем узел (существующая логика)
-      const newNodes = nodes.map(node => {
+      const newNodes = currentLevelNodes.map(node => {
         if (node.id === elementId) {
           return {
             ...node,
@@ -419,20 +410,32 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       });
       setNodes(newNodes);
       const viewport = getViewport();
-      onSchemaChange(prevSchema => ({
-        ...prevSchema,
-        nodes: newNodes,
-        edges: edges,
-        position: [viewport.x, viewport.y],
-        zoom: viewport.zoom
-      }));
+      updateFlowContent(currentFlowId, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
     }
-  }, [nodes, edges, onSchemaChange, getViewport]);
+  }, [getFlowContent, currentFlowId, getViewport, updateFlowContent]);
+
+  const drillIntoGroup = useCallback((nodeId) => {
+    const nodeToDrillInto = currentSchema.nodes.find(n => n.id === nodeId); // Find from full schema
+    if (nodeToDrillInto && nodeToDrillInto.type === 'groupNode' && nodeToDrillInto.data.subFlow) {
+      const viewport = getViewport();
+      updateFlowContent(currentFlowId, nodes, edges, [viewport.x, viewport.y], viewport.zoom); // Save current view
+
+      setCurrentFlowId(nodeId); // Change flow ID
+    }
+  }, [nodes, edges, currentSchema, getViewport, currentFlowId, updateFlowContent]);
+
+  const drillUp = useCallback(() => {
+    if (!currentFlowId) return; // Already at root
+
+    const viewport = getViewport();
+    updateFlowContent(currentFlowId, nodes, edges, [viewport.x, viewport.y], viewport.zoom); // Save current view
+
+    setCurrentFlowId(null); // Go to root level
+  }, [nodes, edges, getViewport, currentFlowId, updateFlowContent]);
 
   // Обработчик для отслеживания кликов по документу
   useEffect(() => {
     const handleDocumentClick = (event) => {
-      // Проверяем, был ли клик вне контекстного меню
       if (!event.target.closest('.context-menu') && contextMenu.show) {
         onCloseContextMenu();
       }
@@ -446,7 +449,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
 
   return (
     <div style={{ width: '100%', height: '100%', backgroundColor: 'var(--bg-primary)', position: 'relative' }}>
-      <ReactFlow 
+      <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -459,6 +462,11 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
         onMoveEnd={onMoveEnd}
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
+        onNodeDoubleClick={(event, node) => {
+          if (node.type === 'groupNode') {
+            drillIntoGroup(node.id);
+          }
+        }}
         connectOnClick={true}
         nodesDraggable={true}
         nodesConnectable={true}
@@ -472,22 +480,21 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
             type: MarkerType.ArrowClosed,
             color: 'var(--border-color)',
           },
-          style: { 
+          style: {
             strokeWidth: 2,
             stroke: 'var(--border-color)'
           },
           data: {
-            strokeWidth: 2 // Добавляем в defaultEdgeOptions
+            strokeWidth: 2
           }
         }}
         onInit={instance => {
-          // console.log('ReactFlow instance initialized:', instance);
-          window.reactFlowInstance = instance; // For debugging purposes
+          window.reactFlowInstance = instance;
         }}
       >
         <Background />
         <Controls showZoom={false} showInteractive={false} />
-        <SettingsPanel 
+        <SettingsPanel
           key={`settings-panel-${selectedElement?.id || 'none'}`}
           selectedElement={selectedElement}
           isVisible={isPanelVisible}
@@ -507,6 +514,22 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           onCreateNode={onCreateNode}
           onMouseLeave={onContextMenuMouseLeave}
         />
+      )}
+      {currentFlowId && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          zIndex: 100,
+          backgroundColor: 'var(--bg-secondary)',
+          padding: '8px 15px',
+          borderRadius: '5px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          color: 'var(--text-color)',
+          cursor: 'pointer'
+        }} onClick={drillUp}>
+          ← Назад (к {currentSchema.nodes.find(n => n.id === currentFlowId)?.data?.label || 'корню'})
+        </div>
       )}
     </div>
   );
