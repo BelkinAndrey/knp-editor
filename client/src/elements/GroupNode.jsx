@@ -1,22 +1,20 @@
-import React, { memo } from 'react';
+import React from 'react';
 import { Handle, Position } from 'reactflow';
 
-function GroupNode({ data }) {
+const GroupNode = ({ data, selected }) => {
   return (
-    <div
-      style={{
-        padding: '10px',
-        border: '1px solid #ddd',
-        borderRadius: '5px',
-        background: 'var(--bg-secondary)',
-        minWidth: '150px',
-        minHeight: '80px',
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      }}
-    >
+    <div style={{
+      padding: '10px',
+      borderRadius: '10px',
+      border: selected ? '3px solid var(--accent-color)' : '1px solid var(--border-color)', // Используем border вместо borderColor
+      backgroundColor: '#303030', // Темно-серый фон
+      minWidth: '200px',
+      minHeight: '100px',
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'space-between',
+      boxShadow: selected ? '0 0 0 3px var(--accent-color)' : '0 2px 4px rgba(0, 0, 0, 0.1)', // Добавляем boxShadow
+    }}>
       <div
         style={{
           background: 'var(--bg-secondary)',
@@ -35,4 +33,4 @@ function GroupNode({ data }) {
   );
 }
 
-export default memo(GroupNode); 
+export default GroupNode; 
