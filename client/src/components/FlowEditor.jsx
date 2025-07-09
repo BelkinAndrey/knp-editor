@@ -5,6 +5,7 @@ import ContextMenu from './ContextMenu';
 import InputNode from '../elements/InputNode';
 import OutputNode from '../elements/OutputNode';
 import PopulationNode from '../elements/PopulationNode';
+import GroupNode from '../elements/GroupNode';
 import axios from 'axios';
 import { debounce } from 'lodash'; // Assuming lodash is available, or we can implement a simple debounce
 import SettingsPanel from './SettingsPanel';
@@ -14,6 +15,7 @@ const nodeTypes = {
   inputNode: InputNode,
   outputNode: OutputNode,
   populationNode: PopulationNode,
+  groupNode: GroupNode,
 };
 
 const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
@@ -288,7 +290,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       data: { 
         label: nodeType === 'inputNode' ? 'Input' : 
                nodeType === 'outputNode' ? 'Output' : 
-               'Population'
+               nodeType === 'populationNode' ? 'Population' :
+               'Group'
       }
     };
     const newNodes = [...nodes, newNode];

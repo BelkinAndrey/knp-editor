@@ -39,6 +39,13 @@ const ContextMenu = ({ x, y, onClose, onCreateNode, onMouseLeave }) => {
       >
         Output 
       </button>
+      <button 
+        className="context-menu-item"
+        onClick={handleCreateNode('groupNode')}
+        data-icon="⠿"
+      >
+        Group
+      </button>
     </div>
   );
 };
