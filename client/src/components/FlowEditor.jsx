@@ -28,51 +28,101 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const [panelWidthState, setPanelWidthState] = useState(300); // Состояние ширины панели настроек
   const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
   const [lastMenuOpenTime, setLastMenuOpenTime] = useState(0);
-  const [currentFlowId, setCurrentFlowId] = useState(null); // null означает корневой уровень
+  const [flowHistoryStack, setFlowHistoryStack] = useState([]); // Стек ID групп для навигации
+
+  // New: Internal schema state
+  const [internalSchema, setInternalSchema] = useState(() => ({
+    name: currentSchema?.name || '',
+    nodes: currentSchema?.nodes || [],
+    edges: currentSchema?.edges || [],
+    position: currentSchema?.position || [0, 0],
+    zoom: currentSchema?.zoom || 1,
+    isPanelCollapsed: currentSchema?.isPanelCollapsed || false,
+    panelWidth: currentSchema?.panelWidth || 300,
+    globalParams: currentSchema?.globalParams || []
+  }));
+
+  // New: Report changes to parent via onSchemaChange
+  useEffect(() => {
+    onSchemaChange(internalSchema);
+  }, [internalSchema, onSchemaChange]);
 
   // Вспомогательная функция для получения узлов и ребер текущего потока
-  const getFlowContent = useCallback((flowId) => {
-    if (!flowId) { // Корневой уровень
-      return { nodes: currentSchema.nodes, edges: currentSchema.edges };
+  const getFlowContent = useCallback((historyStack) => {
+    let currentNodes = internalSchema.nodes;
+    let currentEdges = internalSchema.edges;
+    let currentPosition = internalSchema.position;
+    let currentZoom = internalSchema.zoom;
+
+    for (const flowId of historyStack) {
+      const groupNode = currentNodes.find(n => n.id === flowId);
+      if (groupNode && groupNode.type === 'groupNode' && groupNode.data && groupNode.data.subFlow) {
+        currentNodes = groupNode.data.subFlow.nodes;
+        currentEdges = groupNode.data.subFlow.edges;
+        currentPosition = groupNode.data.subFlow.position;
+        currentZoom = groupNode.data.subFlow.zoom;
+      } else {
+        return { nodes: [], edges: [], position: [0,0], zoom: 1 };
+      }
     }
-    const groupNode = currentSchema.nodes.find(n => n.id === flowId);
-    if (groupNode && groupNode.data && groupNode.data.subFlow) {
-      return { nodes: groupNode.data.subFlow.nodes, edges: groupNode.data.subFlow.edges };
-    }
-    return { nodes: [], edges: [] };
-  }, [currentSchema]);
+    return { nodes: currentNodes, edges: currentEdges, position: currentPosition, zoom: currentZoom };
+  }, [internalSchema]);
 
   // Вспомогательная функция для обновления узлов и ребер текущего потока
-  const updateFlowContent = useCallback((flowId, newNodes, newEdges, newPosition, newZoom) => {
-    onSchemaChange(prevSchema => {
-      let updatedSchema = { ...prevSchema };
-      if (!flowId) { // Корневой уровень
-        updatedSchema.nodes = newNodes;
-        updatedSchema.edges = newEdges;
-        updatedSchema.position = newPosition;
-        updatedSchema.zoom = newZoom;
-      } else {
-        updatedSchema.nodes = prevSchema.nodes.map(node => {
-          if (node.id === flowId && node.type === 'groupNode') {
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                subFlow: {
-                  nodes: newNodes,
-                  edges: newEdges,
-                  position: newPosition,
-                  zoom: newZoom
-                }
-              }
-            };
+  const updateFlowContent = useCallback((historyStack, newNodes, newEdges, newPosition, newZoom) => {
+    setInternalSchema(prevSchema => {
+      const updateNestedSchema = (currentLevel, pathIndex) => {
+        if (pathIndex === historyStack.length) {
+          return {
+            ...currentLevel,
+            nodes: newNodes,
+            edges: newEdges,
+            position: newPosition,
+            zoom: newZoom
+          };
+        }
+
+        const flowId = historyStack[pathIndex];
+        const groupNodeIndex = currentLevel.nodes.findIndex(n => n.id === flowId);
+
+        if (groupNodeIndex === -1 || currentLevel.nodes[groupNodeIndex].type !== 'groupNode') {
+          return currentLevel;
+        }
+
+        const oldGroupNode = currentLevel.nodes[groupNodeIndex];
+        const updatedSubFlow = updateNestedSchema(oldGroupNode.data.subFlow, pathIndex + 1);
+
+        const updatedGroupNode = {
+          ...oldGroupNode,
+          data: {
+            ...oldGroupNode.data,
+            subFlow: updatedSubFlow
           }
-          return node;
-        });
+        };
+
+        const newCurrentLevelNodes = currentLevel.nodes.map((node, index) =>
+          index === groupNodeIndex ? updatedGroupNode : node
+        );
+
+        return {
+          ...currentLevel,
+          nodes: newCurrentLevelNodes
+        };
+      };
+
+      if (historyStack.length === 0) {
+        return {
+          ...prevSchema,
+          nodes: newNodes,
+          edges: newEdges,
+          position: newPosition,
+          zoom: newZoom
+        };
+      } else {
+        return updateNestedSchema(prevSchema, 0);
       }
-      return updatedSchema;
     });
-  }, [onSchemaChange]);
+  }, []);
 
   // Effect to load autosave data on mount
   useEffect(() => {
@@ -80,16 +130,48 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       try {
         const response = await axios.get('http://localhost:3000/api/autosave');
         const loadedSchema = response.data;
-        onSchemaChange(loadedSchema);
 
-        setIsPanelCollapsedState(loadedSchema.isPanelCollapsed || false);
-        setPanelWidthState(loadedSchema.panelWidth || 300);
+        // Recursively ensure all group nodes have subFlow initialized
+        const ensureSubFlow = (nodesToProcess) => {
+          return nodesToProcess.map(node => {
+            if (node.type === 'groupNode') {
+              const updatedNode = {
+                ...node,
+                data: {
+                  ...node.data,
+                  subFlow: {
+                    nodes: node.data.subFlow?.nodes || [],
+                    edges: node.data.subFlow?.edges || [],
+                    position: node.data.subFlow?.position || [0, 0],
+                    zoom: node.data.subFlow?.zoom || 1,
+                  }
+                }
+              };
+              // Recursively process nested subFlows
+              updatedNode.data.subFlow.nodes = ensureSubFlow(updatedNode.data.subFlow.nodes);
+              return updatedNode;
+            }
+            return node;
+          });
+        };
+
+        const initializedSchema = {
+          ...loadedSchema,
+          nodes: ensureSubFlow(loadedSchema.nodes || []),
+          // Also ensure root level position and zoom are initialized if missing
+          position: loadedSchema.position || [0, 0],
+          zoom: loadedSchema.zoom || 1,
+        };
+        setInternalSchema(initializedSchema);
+
+        setIsPanelCollapsedState(initializedSchema.isPanelCollapsed || false);
+        setPanelWidthState(initializedSchema.panelWidth || 300);
 
       } catch (error) {
         console.error('Error loading autosave data:', error);
         if (error.response && error.response.status === 404) {
           console.log('No autosave data found.');
-           onSchemaChange({
+           setInternalSchema({
             name: '',
             nodes: [],
             edges: [],
@@ -109,37 +191,29 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     loadAutosave();
   }, []);
 
-  // Update local state when currentSchema or currentFlowId changes
+  // Update local state when internalSchema or flowHistoryStack changes
   useEffect(() => {
-    const { nodes: newNodes, edges: newEdges } = getFlowContent(currentFlowId);
+    const { nodes: newNodes, edges: newEdges, position: flowPosition, zoom: flowZoom } = getFlowContent(flowHistoryStack);
     setNodes(newNodes);
     setEdges(newEdges);
 
-    let flowPosition = [0, 0];
-    let flowZoom = 1;
-
-    if (!currentFlowId) { // Root level
-      if (currentSchema.position !== undefined && currentSchema.zoom !== undefined) {
-          flowPosition = currentSchema.position;
-          flowZoom = currentSchema.zoom;
-      }
-    } else { // Sub-flow level
-      const groupNode = currentSchema.nodes.find(n => n.id === currentFlowId);
-      if (groupNode && groupNode.data && groupNode.data.subFlow && groupNode.data.subFlow.position !== undefined && groupNode.data.subFlow.zoom !== undefined) {
-        flowPosition = groupNode.data.subFlow.position;
-        flowZoom = groupNode.data.subFlow.zoom;
-      }
-    }
-    setViewport({ x: flowPosition[0], y: flowPosition[1], zoom: flowZoom });
-
-    if (currentSchema.isPanelCollapsed !== undefined) {
-      setIsPanelCollapsedState(currentSchema.isPanelCollapsed);
-    }
-    if (currentSchema.panelWidth !== undefined) {
-      setPanelWidthState(currentSchema.panelWidth);
+    // Ensure flowPosition is an array and flowZoom is a number before accessing its elements
+    if (Array.isArray(flowPosition) && flowPosition.length === 2 && typeof flowZoom === 'number') {
+      setViewport({ x: flowPosition[0], y: flowPosition[1], zoom: flowZoom });
+    } else {
+      console.warn("Invalid flowPosition or flowZoom received from getFlowContent:", flowPosition, flowZoom);
+      // Fallback to default viewport if data is invalid
+      setViewport({ x: 0, y: 0, zoom: 1 });
     }
 
-  }, [currentSchema, currentFlowId, setViewport, getFlowContent]);
+    if (internalSchema.isPanelCollapsed !== undefined) {
+      setIsPanelCollapsedState(internalSchema.isPanelCollapsed);
+    }
+    if (internalSchema.panelWidth !== undefined) {
+      setPanelWidthState(internalSchema.panelWidth);
+    }
+
+  }, [internalSchema, flowHistoryStack, setViewport, getFlowContent]);
 
   // Debounced effect to save schema changes
   const debouncedSave = useCallback(
@@ -155,39 +229,39 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
 
   // Effect to trigger debounced save when schema changes
   useEffect(() => {
-    debouncedSave(currentSchema);
+    debouncedSave(internalSchema);
     return () => {
       debouncedSave.cancel();
     };
-  }, [currentSchema, debouncedSave]);
+  }, [internalSchema, debouncedSave]);
 
   const onNodesChange = useCallback(
     (changes) => {
-      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
+      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
       const newNodes = applyNodeChanges(changes, currentLevelNodes);
       setNodes(newNodes);
 
       const viewport = getViewport();
-      updateFlowContent(currentFlowId, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(flowHistoryStack, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
     },
-    [getFlowContent, currentFlowId, getViewport, updateFlowContent],
+    [getFlowContent, flowHistoryStack, getViewport, updateFlowContent],
   );
 
   const onEdgesChange = useCallback(
     (changes) => {
-      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
+      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
       const newEdges = applyEdgeChanges(changes, currentLevelEdges);
       setEdges(newEdges);
 
       const viewport = getViewport();
-      updateFlowContent(currentFlowId, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(flowHistoryStack, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
     },
-    [getFlowContent, currentFlowId, getViewport, updateFlowContent],
+    [getFlowContent, flowHistoryStack, getViewport, updateFlowContent],
   );
 
   const onConnect = useCallback(
     (params) => {
-      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
+      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
       const strokeColor = 'var(--border-color)';
       const newEdge = {
         ...params,
@@ -209,9 +283,9 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       setEdges(newEdges);
 
       const viewport = getViewport();
-      updateFlowContent(currentFlowId, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(flowHistoryStack, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
     },
-    [getFlowContent, currentFlowId, getViewport, updateFlowContent],
+    [getFlowContent, flowHistoryStack, getViewport, updateFlowContent],
   );
 
   const onCloseContextMenu = useCallback(() => {
@@ -271,15 +345,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
 
   const onMoveEnd = useCallback(() => {
     const viewport = getViewport();
-    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
-    updateFlowContent(currentFlowId, currentLevelNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
+    updateFlowContent(flowHistoryStack, currentLevelNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
 
     onSchemaChange(prevSchema => ({
       ...prevSchema,
       isPanelCollapsed: isPanelCollapsedState,
       panelWidth: panelWidthState
     }));
-  }, [onSchemaChange, getViewport, isPanelCollapsedState, panelWidthState, getFlowContent, currentFlowId, updateFlowContent]);
+  }, [onSchemaChange, getViewport, isPanelCollapsedState, panelWidthState, getFlowContent, flowHistoryStack, updateFlowContent]);
 
   const onContextMenuMouseLeave = useCallback((event) => {
     const relatedTarget = event.relatedTarget;
@@ -289,7 +363,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   }, [onCloseContextMenu]);
 
   const onCreateNode = useCallback(({ x, y, nodeType }) => {
-    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
     const position = screenToFlowPosition({ x, y });
 
     const newNode = {
@@ -301,15 +375,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
                nodeType === 'outputNode' ? 'Output' :
                nodeType === 'populationNode' ? 'Population' :
                'Group',
-        ...(nodeType === 'groupNode' && { subFlow: { nodes: [], edges: [] } })
+        ...(nodeType === 'groupNode' && { subFlow: { nodes: [], edges: [], position: [0, 0], zoom: 1 } })
       }
     };
     const newNodes = [...currentLevelNodes, newNode];
     setNodes(newNodes);
 
     const viewport = getViewport();
-    updateFlowContent(currentFlowId, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
-  }, [screenToFlowPosition, getFlowContent, currentFlowId, getViewport, updateFlowContent]);
+    updateFlowContent(flowHistoryStack, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+  }, [screenToFlowPosition, getFlowContent, flowHistoryStack, getViewport, updateFlowContent]);
 
   const onNodeClick = useCallback((event, node) => {
     const nodeType = node.type === 'inputNode' ? 'input' :
@@ -350,15 +424,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const handleSavePanelSettings = useCallback(({ isPanelCollapsed, panelWidth }) => {
     setIsPanelCollapsedState(isPanelCollapsed);
     setPanelWidthState(panelWidth);
-    onSchemaChange(prevSchema => ({
+    setInternalSchema(prevSchema => ({
       ...prevSchema,
       isPanelCollapsed: isPanelCollapsed,
       panelWidth: panelWidth
     }));
-  }, [onSchemaChange]);
+  }, []);
 
   const handleElementSettingsChange = useCallback((elementId, updatedData) => {
-    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(currentFlowId);
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
     const isEdge = currentLevelEdges.some(edge => edge.id === elementId);
     
     if (elementId === 'global') {
@@ -394,7 +468,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       });
       setEdges(newEdges);
       const viewport = getViewport();
-      updateFlowContent(currentFlowId, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(flowHistoryStack, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
     } else {
       const newNodes = currentLevelNodes.map(node => {
         if (node.id === elementId) {
@@ -410,28 +484,33 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       });
       setNodes(newNodes);
       const viewport = getViewport();
-      updateFlowContent(currentFlowId, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(flowHistoryStack, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
     }
-  }, [getFlowContent, currentFlowId, getViewport, updateFlowContent]);
+  }, [getFlowContent, currentSchema, flowHistoryStack, getViewport, updateFlowContent]);
 
   const drillIntoGroup = useCallback((nodeId) => {
-    const nodeToDrillInto = currentSchema.nodes.find(n => n.id === nodeId); // Find from full schema
+    // Ищем узел группы на ТЕКУЩЕМ уровне, а не всегда в корневой схеме
+    const nodeToDrillInto = nodes.find(n => n.id === nodeId);
     if (nodeToDrillInto && nodeToDrillInto.type === 'groupNode' && nodeToDrillInto.data.subFlow) {
       const viewport = getViewport();
-      updateFlowContent(currentFlowId, nodes, edges, [viewport.x, viewport.y], viewport.zoom); // Save current view
+      // Сохраняем текущее состояние потока перед проваливанием
+      updateFlowContent(flowHistoryStack, nodes, edges, [viewport.x, viewport.y], viewport.zoom);
 
-      setCurrentFlowId(nodeId); // Change flow ID
+      // Добавляем ID группы в стек истории и обновляем текущий FlowId
+      setFlowHistoryStack(prev => [...prev, nodeId]);
     }
-  }, [nodes, edges, currentSchema, getViewport, currentFlowId, updateFlowContent]);
+  }, [nodes, edges, getViewport, flowHistoryStack, updateFlowContent]);
 
   const drillUp = useCallback(() => {
-    if (!currentFlowId) return; // Already at root
+    if (flowHistoryStack.length === 0) return; // Уже на корневом уровне
 
     const viewport = getViewport();
-    updateFlowContent(currentFlowId, nodes, edges, [viewport.x, viewport.y], viewport.zoom); // Save current view
+    // Сохраняем текущее состояние потока перед возвратом
+    updateFlowContent(flowHistoryStack, nodes, edges, [viewport.x, viewport.y], viewport.zoom);
 
-    setCurrentFlowId(null); // Go to root level
-  }, [nodes, edges, getViewport, currentFlowId, updateFlowContent]);
+    // Удаляем последний ID из стека истории
+    setFlowHistoryStack(prev => prev.slice(0, -1));
+  }, [nodes, edges, getViewport, flowHistoryStack, updateFlowContent]);
 
   // Обработчик для отслеживания кликов по документу
   useEffect(() => {
@@ -515,7 +594,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           onMouseLeave={onContextMenuMouseLeave}
         />
       )}
-      {currentFlowId && (
+      {flowHistoryStack.length > 0 && (
         <div style={{
           position: 'absolute',
           top: '10px',
@@ -528,7 +607,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           color: 'var(--text-color)',
           cursor: 'pointer'
         }} onClick={drillUp}>
-          ← Назад (к {currentSchema.nodes.find(n => n.id === currentFlowId)?.data?.label || 'корню'})
+          ← Назад (к {currentSchema.nodes.find(n => n.id === flowHistoryStack[flowHistoryStack.length - 1])?.data?.label || 'корню'})
         </div>
       )}
     </div>
