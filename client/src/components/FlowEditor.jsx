@@ -28,7 +28,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   const [panelWidthState, setPanelWidthState] = useState(300); // Состояние ширины панели настроек
   const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
   const [lastMenuOpenTime, setLastMenuOpenTime] = useState(0);
-  const [flowHistoryStack, setFlowHistoryStack] = useState([]); // Стек ID групп для навигации
+  // const [flowHistoryStack, setFlowHistoryStack] = useState([]); // Стек ID групп для навигации -- REMOVED
 
   // New: Internal schema state
   const [internalSchema, setInternalSchema] = useState(() => ({
@@ -39,7 +39,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     zoom: currentSchema?.zoom || 1,
     isPanelCollapsed: currentSchema?.isPanelCollapsed || false,
     panelWidth: currentSchema?.panelWidth || 300,
-    globalParams: currentSchema?.globalParams || []
+    globalParams: currentSchema?.globalParams || [],
+    flowHistoryStack: currentSchema?.flowHistoryStack || [] // Добавляем flowHistoryStack
   }));
 
   // New: Report changes to parent via onSchemaChange
@@ -116,7 +117,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           nodes: newNodes,
           edges: newEdges,
           position: newPosition,
-          zoom: newZoom
+          zoom: newZoom,
+          flowHistoryStack: historyStack // Сохраняем flowHistoryStack на корневом уровне
         };
       } else {
         return updateNestedSchema(prevSchema, 0);
@@ -161,6 +163,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           // Also ensure root level position and zoom are initialized if missing
           position: loadedSchema.position || [0, 0],
           zoom: loadedSchema.zoom || 1,
+          flowHistoryStack: loadedSchema.flowHistoryStack || [] // Инициализация flowHistoryStack
         };
         setInternalSchema(initializedSchema);
 
@@ -179,7 +182,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
             zoom: 1,
             isPanelCollapsed: false,
             panelWidth: 300,
-            globalParams: []
+            globalParams: [],
+            flowHistoryStack: [] // Инициализация flowHistoryStack при отсутствии данных
           });
            setIsPanelCollapsedState(false);
            setPanelWidthState(300);
@@ -191,9 +195,9 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     loadAutosave();
   }, []);
 
-  // Update local state when internalSchema or flowHistoryStack changes
+  // Update local state when internalSchema changes
   useEffect(() => {
-    const { nodes: newNodes, edges: newEdges, position: flowPosition, zoom: flowZoom } = getFlowContent(flowHistoryStack);
+    const { nodes: newNodes, edges: newEdges, position: flowPosition, zoom: flowZoom } = getFlowContent(internalSchema.flowHistoryStack || []);
     setNodes(newNodes);
     setEdges(newEdges);
 
@@ -213,7 +217,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       setPanelWidthState(internalSchema.panelWidth);
     }
 
-  }, [internalSchema, flowHistoryStack, setViewport, getFlowContent]);
+  }, [internalSchema, setViewport, getFlowContent]); // Removed flowHistoryStack from dependencies
 
   // Debounced effect to save schema changes
   const debouncedSave = useCallback(
@@ -237,31 +241,31 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
 
   const onNodesChange = useCallback(
     (changes) => {
-      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
+      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
       const newNodes = applyNodeChanges(changes, currentLevelNodes);
       setNodes(newNodes);
 
       const viewport = getViewport();
-      updateFlowContent(flowHistoryStack, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(internalSchema.flowHistoryStack || [], newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
     },
-    [getFlowContent, flowHistoryStack, getViewport, updateFlowContent],
+    [getFlowContent, internalSchema.flowHistoryStack, getViewport, updateFlowContent],
   );
 
   const onEdgesChange = useCallback(
     (changes) => {
-      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
+      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
       const newEdges = applyEdgeChanges(changes, currentLevelEdges);
       setEdges(newEdges);
 
       const viewport = getViewport();
-      updateFlowContent(flowHistoryStack, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(internalSchema.flowHistoryStack || [], currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
     },
-    [getFlowContent, flowHistoryStack, getViewport, updateFlowContent],
+    [getFlowContent, internalSchema.flowHistoryStack, getViewport, updateFlowContent],
   );
 
   const onConnect = useCallback(
     (params) => {
-      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
+      const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
       const strokeColor = 'var(--border-color)';
       const newEdge = {
         ...params,
@@ -283,9 +287,9 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       setEdges(newEdges);
 
       const viewport = getViewport();
-      updateFlowContent(flowHistoryStack, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(internalSchema.flowHistoryStack || [], currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
     },
-    [getFlowContent, flowHistoryStack, getViewport, updateFlowContent],
+    [getFlowContent, internalSchema.flowHistoryStack, getViewport, updateFlowContent],
   );
 
   const onCloseContextMenu = useCallback(() => {
@@ -345,15 +349,15 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
 
   const onMoveEnd = useCallback(() => {
     const viewport = getViewport();
-    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
-    updateFlowContent(flowHistoryStack, currentLevelNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
+    updateFlowContent(internalSchema.flowHistoryStack || [], currentLevelNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
 
     onSchemaChange(prevSchema => ({
       ...prevSchema,
       isPanelCollapsed: isPanelCollapsedState,
       panelWidth: panelWidthState
     }));
-  }, [onSchemaChange, getViewport, isPanelCollapsedState, panelWidthState, getFlowContent, flowHistoryStack, updateFlowContent]);
+  }, [onSchemaChange, getViewport, isPanelCollapsedState, panelWidthState, getFlowContent, internalSchema.flowHistoryStack, updateFlowContent]);
 
   const onContextMenuMouseLeave = useCallback((event) => {
     const relatedTarget = event.relatedTarget;
@@ -363,7 +367,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   }, [onCloseContextMenu]);
 
   const onCreateNode = useCallback(({ x, y, nodeType }) => {
-    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
     const position = screenToFlowPosition({ x, y });
 
     const newNode = {
@@ -382,8 +386,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     setNodes(newNodes);
 
     const viewport = getViewport();
-    updateFlowContent(flowHistoryStack, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
-  }, [screenToFlowPosition, getFlowContent, flowHistoryStack, getViewport, updateFlowContent]);
+    updateFlowContent(internalSchema.flowHistoryStack || [], newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+  }, [screenToFlowPosition, getFlowContent, internalSchema.flowHistoryStack, getViewport, updateFlowContent]);
 
   const onNodeClick = useCallback((event, node) => {
     const nodeType = node.type === 'inputNode' ? 'input' :
@@ -432,7 +436,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
   }, []);
 
   const handleElementSettingsChange = useCallback((elementId, updatedData) => {
-    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(flowHistoryStack);
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
     const isEdge = currentLevelEdges.some(edge => edge.id === elementId);
     
     if (elementId === 'global') {
@@ -468,7 +472,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       });
       setEdges(newEdges);
       const viewport = getViewport();
-      updateFlowContent(flowHistoryStack, currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(internalSchema.flowHistoryStack || [], currentLevelNodes, newEdges, [viewport.x, viewport.y], viewport.zoom);
     } else {
       const newNodes = currentLevelNodes.map(node => {
         if (node.id === elementId) {
@@ -484,9 +488,9 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
       });
       setNodes(newNodes);
       const viewport = getViewport();
-      updateFlowContent(flowHistoryStack, newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(internalSchema.flowHistoryStack || [], newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
     }
-  }, [getFlowContent, currentSchema, flowHistoryStack, getViewport, updateFlowContent]);
+  }, [getFlowContent, internalSchema.flowHistoryStack, getViewport, updateFlowContent]);
 
   const drillIntoGroup = useCallback((nodeId) => {
     // Ищем узел группы на ТЕКУЩЕМ уровне, а не всегда в корневой схеме
@@ -494,23 +498,33 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
     if (nodeToDrillInto && nodeToDrillInto.type === 'groupNode' && nodeToDrillInto.data.subFlow) {
       const viewport = getViewport();
       // Сохраняем текущее состояние потока перед проваливанием
-      updateFlowContent(flowHistoryStack, nodes, edges, [viewport.x, viewport.y], viewport.zoom);
+      updateFlowContent(internalSchema.flowHistoryStack || [], nodes, edges, [viewport.x, viewport.y], viewport.zoom);
 
       // Добавляем ID группы в стек истории и обновляем текущий FlowId
-      setFlowHistoryStack(prev => [...prev, nodeId]);
+      const newFlowHistoryStack = [...(internalSchema.flowHistoryStack || []), nodeId];
+      // setFlowHistoryStack(newFlowHistoryStack); // REMOVED
+      setInternalSchema(prevSchema => ({ // Обновляем internalSchema с новым стеком
+        ...prevSchema,
+        flowHistoryStack: newFlowHistoryStack
+      }));
     }
-  }, [nodes, edges, getViewport, flowHistoryStack, updateFlowContent]);
+  }, [nodes, edges, getViewport, internalSchema.flowHistoryStack, updateFlowContent]);
 
   const drillUp = useCallback(() => {
-    if (flowHistoryStack.length === 0) return; // Уже на корневом уровне
+    if ((internalSchema.flowHistoryStack || []).length === 0) return; // Уже на корневом уровне
 
     const viewport = getViewport();
     // Сохраняем текущее состояние потока перед возвратом
-    updateFlowContent(flowHistoryStack, nodes, edges, [viewport.x, viewport.y], viewport.zoom);
+    updateFlowContent(internalSchema.flowHistoryStack || [], nodes, edges, [viewport.x, viewport.y], viewport.zoom);
 
     // Удаляем последний ID из стека истории
-    setFlowHistoryStack(prev => prev.slice(0, -1));
-  }, [nodes, edges, getViewport, flowHistoryStack, updateFlowContent]);
+    const newFlowHistoryStack = (internalSchema.flowHistoryStack || []).slice(0, -1);
+    // setFlowHistoryStack(newFlowHistoryStack); // REMOVED
+    setInternalSchema(prevSchema => ({
+      ...prevSchema,
+      flowHistoryStack: newFlowHistoryStack
+    }));
+  }, [nodes, edges, getViewport, internalSchema.flowHistoryStack, updateFlowContent]);
 
   // Обработчик для отслеживания кликов по документу
   useEffect(() => {
@@ -594,7 +608,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           onMouseLeave={onContextMenuMouseLeave}
         />
       )}
-      {flowHistoryStack.length > 0 && (
+      {internalSchema.flowHistoryStack?.length > 0 && ( // Use internalSchema.flowHistoryStack
         <div style={{
           position: 'absolute',
           top: '10px',
@@ -607,7 +621,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange }) => {
           color: 'var(--text-color)',
           cursor: 'pointer'
         }} onClick={drillUp}>
-          ← Назад (к {currentSchema.nodes.find(n => n.id === flowHistoryStack[flowHistoryStack.length - 1])?.data?.label || 'корню'})
+          ← Назад (к {currentSchema.nodes.find(n => n.id === internalSchema.flowHistoryStack[internalSchema.flowHistoryStack.length - 1])?.data?.label || 'корню'})
         </div>
       )}
     </div>

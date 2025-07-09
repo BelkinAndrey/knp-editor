@@ -20,6 +20,7 @@ const BaseSchema = new mongoose.Schema({
   isPanelCollapsed: Boolean,
   panelWidth: Number,
   globalParams: Array,
+  flowHistoryStack: Array,
 });
 
 // Модель для схем
