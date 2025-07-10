@@ -11,6 +11,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
   const panelRef = useRef(null);
   const [populationLabel, setPopulationLabel] = useState(''); // State for population label input
   const [inputOutputLabel, setInputOutputLabel] = useState(''); // Новое состояние для метки input/output
+  const [groupLabel, setGroupLabel] = useState(''); // Новое состояние для метки group
   const [populationColor, setPopulationColor] = useState('#000000'); // Добавляем состояние для цвета
   const [edgeColor, setEdgeColor] = useState('#000000'); // Добавляем состояние для цвета проекции
   const [neuronType, setNeuronType] = useState('BLIFATNeuron'); // Новое состояние для типа нейрона
@@ -106,6 +107,7 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       // Сбрасываем состояние при отсутствии выбранного элемента
       setPopulationLabel('');
       setInputOutputLabel(''); // Добавляем сброс метки input/output
+      setGroupLabel(''); // Добавляем сброс метки group
       setPopulationColor('#000000');
       setEdgeColor('#000000');
       setNeuronType('BLIFATNeuron');
@@ -201,6 +203,10 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       const elementData = selectedElement.data || {};
       const newLabel = elementData.label || '';
       setInputOutputLabel(newLabel);
+    } else if (selectedElement.type === 'group') {
+      const elementData = selectedElement.data || {};
+      const newLabel = elementData.label || '';
+      setGroupLabel(newLabel);
     } else if (selectedElement.type === 'edge') {
       const elementData = selectedElement.data || {};
       const newColor = elementData.color || '#000000';
@@ -479,7 +485,8 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       'edge': 'Projection',
       'population': 'Population',
       'input': 'Input',
-      'output': 'Output'
+      'output': 'Output',
+      'group': 'Group'
     };
     
     return typeMap[selectedElement.type] || selectedElement.type;
@@ -628,6 +635,18 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     
     const value = newValue.replace(/\s+/g, '');
     setInputOutputLabel(value);
+    
+    onElementSettingsChange?.(selectedElement.id, {
+      label: value
+    });
+  }, [selectedElement, onElementSettingsChange]);
+
+  // Добавляем обработчик изменения метки для group
+  const handleGroupLabelChange = useCallback((newValue) => {
+    if (!selectedElement) return;
+    
+    const value = newValue.replace(/\s+/g, '');
+    setGroupLabel(value);
     
     onElementSettingsChange?.(selectedElement.id, {
       label: value
@@ -1189,6 +1208,21 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                           value={inputOutputLabel}
                           onChange={(e) => handleInputOutputLabelChange(e.target.value)}
                           placeholder="Enter name (no spaces allowed)"
+                          className="settings-panel-input"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedElement.type === 'group' && (
+                    <div className="group-settings-content">
+                      <div className="setting-item">
+                        <span className="setting-label">Name:</span>
+                        <input
+                          type="text"
+                          value={groupLabel}
+                          onChange={(e) => handleGroupLabelChange(e.target.value)}
+                          placeholder="Enter group name (no spaces allowed)"
                           className="settings-panel-input"
                         />
                       </div>

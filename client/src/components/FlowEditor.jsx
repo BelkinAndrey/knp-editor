@@ -462,7 +462,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
         label: nodeType === 'inputNode' ? 'Input' :
                nodeType === 'outputNode' ? 'Output' :
                nodeType === 'populationNode' ? 'Population' :
-               'Group',
+               nodeType === 'groupNode' ? 'Group' :
+               'Node',
         ...(nodeType === 'groupNode' && { subFlow: { nodes: [], edges: [], position: [0, 0], zoom: 1 } })
       }
     };
@@ -476,7 +477,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
   const onNodeClick = useCallback((event, node) => {
     const nodeType = node.type === 'inputNode' ? 'input' :
                     node.type === 'outputNode' ? 'output' :
-                    node.type === 'populationNode' ? 'population' : 'node';
+                    node.type === 'populationNode' ? 'population' :
+                    node.type === 'groupNode' ? 'group' : 'node';
     
     const newSelectedElement = {
       type: nodeType,
