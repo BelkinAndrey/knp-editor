@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import ReactFlow, { Controls, Background, Handle, Position, ReactFlowProvider, applyEdgeChanges, applyNodeChanges, useReactFlow, addEdge, MarkerType } from 'reactflow';
 import 'reactflow/dist/style.css';
 import ContextMenu from './ContextMenu';
@@ -29,6 +29,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
   const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
   const [lastMenuOpenTime, setLastMenuOpenTime] = useState(0);
   // const [flowHistoryStack, setFlowHistoryStack] = useState([]); // Стек ID групп для навигации -- REMOVED
+
+
 
   // New: Internal schema state
   const [internalSchema, setInternalSchema] = useState(() => ({
@@ -67,10 +69,51 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
     }
   }, [clearInternalSchema, clearInternalSchemaRef]);
 
-  // New: Report changes to parent via onSchemaChange
+  // Убираем автоматическое обновление onSchemaChange для предотвращения циклов
+  // Теперь onSchemaChange будет вызываться только при определенных действиях пользователя
+
+  // Effect to update internalSchema when currentSchema changes (e.g., when loading a file)
   useEffect(() => {
-    onSchemaChange(internalSchema);
-  }, [internalSchema, onSchemaChange]);
+    // Рекурсивная функция для инициализации subFlow в groupNode
+    const ensureSubFlow = (nodesToProcess) => {
+      return nodesToProcess.map(node => {
+        if (node.type === 'groupNode') {
+          const updatedNode = {
+            ...node,
+            data: {
+              ...node.data,
+              subFlow: {
+                nodes: node.data.subFlow?.nodes || [],
+                edges: node.data.subFlow?.edges || [],
+                position: node.data.subFlow?.position || [0, 0],
+                zoom: node.data.subFlow?.zoom || 1,
+              }
+            }
+          };
+          // Рекурсивно обрабатываем вложенные subFlows
+          updatedNode.data.subFlow.nodes = ensureSubFlow(updatedNode.data.subFlow.nodes);
+          return updatedNode;
+        }
+        return node;
+      });
+    };
+
+    const updatedInternalSchema = {
+      name: currentSchema?.name || '',
+      nodes: ensureSubFlow(currentSchema?.nodes || []),
+      edges: currentSchema?.edges || [],
+      position: currentSchema?.position || [0, 0],
+      zoom: currentSchema?.zoom || 1,
+      isPanelCollapsed: currentSchema?.isPanelCollapsed || false,
+      panelWidth: currentSchema?.panelWidth || 300,
+      globalParams: currentSchema?.globalParams || [],
+      flowHistoryStack: currentSchema?.flowHistoryStack || []
+    };
+
+    setInternalSchema(updatedInternalSchema);
+    setIsPanelCollapsedState(updatedInternalSchema.isPanelCollapsed);
+    setPanelWidthState(updatedInternalSchema.panelWidth);
+  }, [currentSchema]);
 
   // Вспомогательная функция для получения узлов и ребер текущего потока
   const getFlowContent = useCallback((historyStack) => {
@@ -263,6 +306,22 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
     };
   }, [internalSchema, debouncedSave]);
 
+  // Debounced effect to update parent schema
+  const debouncedParentUpdate = useCallback(
+    debounce((schemaToUpdate) => {
+      onSchemaChange(schemaToUpdate);
+    }, 2000),
+    [onSchemaChange]
+  );
+
+  // Effect to trigger debounced parent update when internalSchema changes
+  useEffect(() => {
+    debouncedParentUpdate(internalSchema);
+    return () => {
+      debouncedParentUpdate.cancel();
+    };
+  }, [internalSchema, debouncedParentUpdate]);
+
   const onNodesChange = useCallback(
     (changes) => {
       const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
@@ -376,12 +435,13 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
     const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
     updateFlowContent(internalSchema.flowHistoryStack || [], currentLevelNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
 
-    onSchemaChange(prevSchema => ({
+    // Обновляем только internalSchema, не вызываем onSchemaChange
+    setInternalSchema(prevSchema => ({
       ...prevSchema,
       isPanelCollapsed: isPanelCollapsedState,
       panelWidth: panelWidthState
     }));
-  }, [onSchemaChange, getViewport, isPanelCollapsedState, panelWidthState, getFlowContent, internalSchema.flowHistoryStack, updateFlowContent]);
+  }, [getViewport, isPanelCollapsedState, panelWidthState, getFlowContent, internalSchema.flowHistoryStack, updateFlowContent]);
 
   const onContextMenuMouseLeave = useCallback((event) => {
     const relatedTarget = event.relatedTarget;
@@ -459,12 +519,17 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
     }));
   }, []);
 
+  // Функция для ручного сохранения изменений в родительский компонент
+  const saveToParent = useCallback(() => {
+    onSchemaChange(internalSchema);
+  }, [internalSchema, onSchemaChange]);
+
   const handleElementSettingsChange = useCallback((elementId, updatedData) => {
     const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
     const isEdge = currentLevelEdges.some(edge => edge.id === elementId);
     
     if (elementId === 'global') {
-      onSchemaChange(prevSchema => ({
+      setInternalSchema(prevSchema => ({
         ...prevSchema,
         globalParams: updatedData.globalParams
       }));

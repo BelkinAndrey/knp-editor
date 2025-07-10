@@ -55,13 +55,14 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
     try {
       const response = await axios.post(API_URL, {
         name: newFileName,
-        nodes: currentSchema.nodes,
-        edges: currentSchema.edges,
-        zoom: currentSchema.zoom,
-        position: currentSchema.position,
-        isPanelCollapsed: currentSchema.isPanelCollapsed,
-        panelWidth: currentSchema.panelWidth,
-        globalParams: currentSchema.globalParams || []
+        nodes: currentSchema.nodes || [],
+        edges: currentSchema.edges || [],
+        position: currentSchema.position || [0, 0],
+        zoom: currentSchema.zoom || 1,
+        isPanelCollapsed: currentSchema.isPanelCollapsed || false,
+        panelWidth: currentSchema.panelWidth || 300,
+        globalParams: currentSchema.globalParams || [],
+        flowHistoryStack: currentSchema.flowHistoryStack || []
       });
 
       setNewFileName('');
@@ -115,8 +116,33 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
                     className="schema-info"
                     onClick={() => {
                       try {
+                        // Рекурсивная функция для инициализации subFlow в groupNode
+                        const ensureSubFlow = (nodesToProcess) => {
+                          return nodesToProcess.map(node => {
+                            if (node.type === 'groupNode') {
+                              const updatedNode = {
+                                ...node,
+                                data: {
+                                  ...node.data,
+                                  subFlow: {
+                                    nodes: node.data.subFlow?.nodes || [],
+                                    edges: node.data.subFlow?.edges || [],
+                                    position: node.data.subFlow?.position || [0, 0],
+                                    zoom: node.data.subFlow?.zoom || 1,
+                                  }
+                                }
+                              };
+                              // Рекурсивно обрабатываем вложенные subFlows
+                              updatedNode.data.subFlow.nodes = ensureSubFlow(updatedNode.data.subFlow.nodes);
+                              return updatedNode;
+                            }
+                            return node;
+                          });
+                        };
+
                         const schemaData = {
-                          nodes: Array.isArray(schema.nodes) ? schema.nodes.map(node => {
+                          name: schema.name || '',
+                          nodes: Array.isArray(schema.nodes) ? ensureSubFlow(schema.nodes.map(node => {
                             let label = node.data?.label;
                             if (label && typeof label === 'object' && 'props' in label) {
                               label = label.props?.children || 'Default Node';
@@ -131,25 +157,20 @@ const MongoDBModal = ({ isOpen, onClose, onLoadSchema, currentSchema }) => {
                                 label: label
                               }
                             };
-                          }) : [],
+                          })) : [],
                           edges: Array.isArray(schema.edges) ? schema.edges.map(edge => ({
                             ...edge,
                             id: String(edge.id),
                             source: String(edge.source),
                             target: String(edge.target)
                           })) : [],
-                          zoom: schema.zoom,
-                          position: schema.position,
-                          globalParams: schema.globalParams || []
+                          position: schema.position || [0, 0],
+                          zoom: schema.zoom || 1,
+                          isPanelCollapsed: schema.isPanelCollapsed || false,
+                          panelWidth: schema.panelWidth || 300,
+                          globalParams: schema.globalParams || [],
+                          flowHistoryStack: schema.flowHistoryStack || []
                         };
-                        
-                        // Include panel settings if they exist in the fetched schema
-                        if (schema.isPanelCollapsed !== undefined) {
-                          schemaData.isPanelCollapsed = schema.isPanelCollapsed;
-                        }
-                        if (schema.panelWidth !== undefined) {
-                          schemaData.panelWidth = schema.panelWidth;
-                        }
 
                         onLoadSchema(schemaData);
                         onClose();

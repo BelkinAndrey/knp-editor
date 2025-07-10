@@ -2,11 +2,20 @@ import React, { useState, useCallback, useRef } from 'react';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import FlowEditor from './components/FlowEditor';
-import { Scheme } from './data/scheme';
 import './App.css';
 
 function App() {
-  const [currentSchema, setCurrentSchema] = useState(Scheme);
+  const [currentSchema, setCurrentSchema] = useState({
+    name: '',
+    nodes: [],
+    edges: [],
+    position: [0, 0],
+    zoom: 1,
+    isPanelCollapsed: false,
+    panelWidth: 300,
+    globalParams: [],
+    flowHistoryStack: []
+  });
   const clearInternalSchemaRef = useRef(null);
 
   const handleLoadSchema = useCallback((schema) => {
