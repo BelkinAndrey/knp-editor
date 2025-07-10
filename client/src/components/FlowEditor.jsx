@@ -28,9 +28,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
   const [panelWidthState, setPanelWidthState] = useState(300); // Состояние ширины панели настроек
   const { screenToFlowPosition, getViewport, setViewport } = useReactFlow();
   const [lastMenuOpenTime, setLastMenuOpenTime] = useState(0);
-  // const [flowHistoryStack, setFlowHistoryStack] = useState([]); // Стек ID групп для навигации -- REMOVED
-
-
+  const reportedSchemaRef = useRef(null); // Добавляем ref для отслеживания последнего переданного состояния
 
   // New: Internal schema state
   const [internalSchema, setInternalSchema] = useState(() => ({
@@ -74,6 +72,12 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
 
   // Effect to update internalSchema when currentSchema changes (e.g., when loading a file)
   useEffect(() => {
+    // Выполняем глубокое сравнение, чтобы определить, действительно ли currentSchema изменился
+    // и не является ли это изменением, которое мы сами отправили родителю.
+    if (reportedSchemaRef.current && JSON.stringify(currentSchema) === JSON.stringify(reportedSchemaRef.current)) {
+      return; // Игнорируем это обновление, так как оно пришло из FlowEditor
+    }
+
     // Рекурсивная функция для инициализации subFlow в groupNode
     const ensureSubFlow = (nodesToProcess) => {
       return nodesToProcess.map(node => {
@@ -137,7 +141,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
   }, [internalSchema]);
 
   // Вспомогательная функция для обновления узлов и ребер текущего потока
-  const updateFlowContent = useCallback((historyStack, newNodes, newEdges, newPosition, newZoom) => {
+  const updateFlowContent = useCallback((historyStack, newNodes, newEdges, newPosition, newZoom, panelSettings = {}) => {
     setInternalSchema(prevSchema => {
       const updateNestedSchema = (currentLevel, pathIndex) => {
         if (pathIndex === historyStack.length) {
@@ -185,7 +189,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
           edges: newEdges,
           position: newPosition,
           zoom: newZoom,
-          flowHistoryStack: historyStack // Сохраняем flowHistoryStack на корневом уровне
+          flowHistoryStack: historyStack, // Сохраняем flowHistoryStack на корневом уровне
+          ...panelSettings // Применяем настройки панели к корневому уровню
         };
       } else {
         return updateNestedSchema(prevSchema, 0);
@@ -309,6 +314,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
   // Debounced effect to update parent schema
   const debouncedParentUpdate = useCallback(
     debounce((schemaToUpdate) => {
+      reportedSchemaRef.current = schemaToUpdate; // Обновляем ref перед передачей родителю
       onSchemaChange(schemaToUpdate);
     }, 2000),
     [onSchemaChange]
@@ -433,14 +439,13 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
   const onMoveEnd = useCallback(() => {
     const viewport = getViewport();
     const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
-    updateFlowContent(internalSchema.flowHistoryStack || [], currentLevelNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
-
-    // Обновляем только internalSchema, не вызываем onSchemaChange
-    setInternalSchema(prevSchema => ({
-      ...prevSchema,
-      isPanelCollapsed: isPanelCollapsedState,
-      panelWidth: panelWidthState
-    }));
+    updateFlowContent(internalSchema.flowHistoryStack || [],
+                      currentLevelNodes,
+                      currentLevelEdges,
+                      [viewport.x, viewport.y],
+                      viewport.zoom,
+                      { isPanelCollapsed: isPanelCollapsedState, panelWidth: panelWidthState } // Передаем настройки панели
+    );
   }, [getViewport, isPanelCollapsedState, panelWidthState, getFlowContent, internalSchema.flowHistoryStack, updateFlowContent]);
 
   const onContextMenuMouseLeave = useCallback((event) => {
