@@ -39,7 +39,7 @@ const GroupNode = ({ data, selected }) => {
         borderBottom: '1px solid var(--border-color)',
       }}>
         <div>{data.label || 'Group'}</div>
-        <span style={{ cursor: 'pointer' }}>...</span>
+        <span style={{ cursor: 'pointer' }}>+</span>
       </div>
 
       {/* Тело ноды с портами */}
