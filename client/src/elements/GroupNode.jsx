@@ -16,13 +16,14 @@ const GroupNode = ({ data, selected }) => {
   return (
     <div style={{
       borderRadius: '10px',
-      border: selected ? '3px solid var(--accent-color)' : '1px solid var(--border-color)',
+      border: '1px solid var(--border-color)',
       backgroundColor: '#303030',
       minWidth: '200px',
       minHeight: `${Math.max(100, 30 + totalPorts * 35)}px`,
       display: 'flex',
       flexDirection: 'column',
       boxShadow: selected ? '0 0 0 3px var(--accent-color)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
+      borderColor: selected ? 'var(--accent-color)' : 'var(--border-color)',
     }}>
       {/* Заголовок ноды */}
       <div style={{
