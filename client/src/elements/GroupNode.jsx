@@ -1,7 +1,9 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 
-const GroupNode = ({ data, selected, id }) => {
+const GroupNode = (props) => {
+  const { data, selected, id } = props;
+  const position = { x: props.xPos ?? 0, y: props.yPos ?? 0 };
   // Получаем список input и output нод из subFlow (только ноды на корневом уровне группы)
   const inputNodes = data.subFlow?.nodes?.filter(node => 
     node.type === 'inputNode' && !node.parentNode
@@ -20,22 +22,6 @@ const GroupNode = ({ data, selected, id }) => {
     // Получаем текущее название ноды
     const currentLabel = data.label || 'Group';
     
-    // Функция для генерации нового названия с инкрементом номера
-    const generateNewLabel = (label) => {
-      // Ищем число в конце строки
-      const match = label.match(/^(.*?)(\d+)$/);
-      if (match) {
-        const baseName = match[1];
-        const currentNumber = parseInt(match[2]);
-        return `${baseName}${currentNumber + 1}`;
-      } else {
-        // Если числа нет, добавляем " 1"
-        return `${label} 1`;
-      }
-    };
-
-    const newLabel = generateNewLabel(currentLabel);
-    
     // Создаем глубокую копию subFlow
     const deepCopySubFlow = (subFlow) => {
       if (!subFlow) return { nodes: [], edges: [], position: [0, 0], zoom: 1 };
@@ -51,7 +37,11 @@ const GroupNode = ({ data, selected, id }) => {
         return {
           ...node,
           id: newNodeId,
-          data: { ...node.data }
+          data: {
+            ...node.data,
+            // Рекурсивно копируем subFlow для вложенных groupNode
+            ...(node.type === 'groupNode' && { subFlow: deepCopySubFlow(node.data.subFlow) })
+          }
         };
       }) : [];
       
@@ -77,13 +67,82 @@ const GroupNode = ({ data, selected, id }) => {
       };
     };
 
+    // Получаем все существующие groupNode с тем же базовым label для подсчета копий
+    const getAllNodes = () => {
+      if (window.reactFlowInstance) {
+        return window.reactFlowInstance.getNodes();
+      }
+      return [];
+    };
+
+    const allNodes = getAllNodes();
+    const baseLabel = (currentLabel || 'Group').replace(/\d+$/, ''); // Убираем число из конца
+    
+    // Находим все существующие ноды с тем же базовым названием
+    const existingNodes = allNodes.filter(node => 
+      node.type === 'groupNode' && 
+      node.data.label && 
+      node.data.label.startsWith(baseLabel)
+    );
+
+    // Находим максимальный индекс среди существующих нод
+    let maxIndex = 0;
+    existingNodes.forEach(node => {
+      const match = node.data.label.match(new RegExp(`^${baseLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)$`));
+      if (match) {
+        const index = parseInt(match[1]);
+        if (index > maxIndex) {
+          maxIndex = index;
+        }
+      }
+    });
+
+    // Новый индекс будет на 1 больше максимального
+    const newIndex = maxIndex + 1;
+    const newLabel = newIndex === 1 ? baseLabel : `${baseLabel}${newIndex}`;
+
+    // Инициализируем глобальные переменные для отслеживания копий
+    if (!window.groupNodeCopyState) {
+      window.groupNodeCopyState = {
+        lastClickedNodeId: null,
+        copyCount: 0,
+        basePosition: null
+      };
+    }
+
+    const copyState = window.groupNodeCopyState;
+    const currentNodePosition = { x: position.x, y: position.y };
+
+    // Проверяем, изменилась ли нода или её позиция
+    if (copyState.lastClickedNodeId !== id || 
+        copyState.basePosition?.x !== currentNodePosition.x || 
+        copyState.basePosition?.y !== currentNodePosition.y) {
+      // Сбрасываем счетчик при смене ноды или перемещении
+      copyState.copyCount = 0;
+      copyState.basePosition = { ...currentNodePosition };
+    }
+
+    // Обновляем ID последней нажатой ноды
+    copyState.lastClickedNodeId = id;
+
+    // Вычисляем смещение
+    const baseOffsetX = 200;
+    const baseOffsetY = 200;
+    const additionalOffset = copyState.copyCount * 50;
+    
+    const offsetX = baseOffsetX + additionalOffset;
+    const offsetY = baseOffsetY + additionalOffset;
+
+    // Увеличиваем счетчик копий
+    copyState.copyCount++;
+
     // Создаем новую ноду
     const newNode = {
       id: `node-${Date.now()}`,
       type: 'groupNode',
-      position: { 
-        x: (data.position?.x || 0) + 250, 
-        y: (data.position?.y || 0) + 50 
+      position: {
+        x: currentNodePosition.x + baseOffsetX + additionalOffset,
+        y: currentNodePosition.y + baseOffsetY + additionalOffset
       },
       data: {
         label: newLabel,

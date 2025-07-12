@@ -15,7 +15,7 @@ const nodeTypes = {
   inputNode: InputNode,
   outputNode: OutputNode,
   populationNode: PopulationNode,
-  groupNode: GroupNode,
+  groupNode: (props) => <GroupNode {...props} />,
 };
 
 const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaRef }) => {
@@ -332,7 +332,6 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
     (changes) => {
       const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
       const newNodes = applyNodeChanges(changes, currentLevelNodes);
-      setNodes(newNodes);
 
       const viewport = getViewport();
       updateFlowContent(internalSchema.flowHistoryStack || [], newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
