@@ -680,6 +680,8 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
         elementsSelectable={true}
         selectNodesOnDrag={true}
         deleteKeyCode="Delete"
+        minZoom={0.1}
+        maxZoom={2}
         defaultEdgeOptions={{
           animated: false,
           type: 'default',
@@ -700,7 +702,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
         }}
       >
         <Background />
-        <Controls showZoom={false} showInteractive={false} />
+        <Controls showZoom={true} showInteractive={false} />
         <SettingsPanel
           key={`settings-panel-${selectedElement?.id || 'none'}`}
           selectedElement={selectedElement}
