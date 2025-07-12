@@ -243,8 +243,8 @@ const GroupNode = (props) => {
         onClick={handleHeaderClick}
         onDoubleClick={handleHeaderDoubleClick}
       >
+        <span>{data.label || 'Group'}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>{data.label || 'Group'}</span>
           {/* Индикатор статуса */}
           {nodeStatus === 'parent' && (
             <div
@@ -270,14 +270,14 @@ const GroupNode = (props) => {
               title="Эта нода является наследником"
             />
           )}
+          <span 
+            style={{ cursor: 'pointer' }}
+            onClick={handleDuplicateClick}
+            title="Дублировать ноду"
+          >
+            +
+          </span>
         </div>
-        <span 
-          style={{ cursor: 'pointer' }}
-          onClick={handleDuplicateClick}
-          title="Дублировать ноду"
-        >
-          +
-        </span>
       </div>
 
       {/* Тело ноды с портами */}

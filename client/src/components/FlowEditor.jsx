@@ -594,6 +594,48 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
     }
   }, [getFlowContent, internalSchema.flowHistoryStack, getViewport, updateFlowContent]);
 
+  // Функция для обновления выбранного элемента
+  const updateSelectedElement = useCallback((elementId) => {
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
+    
+    // Ищем ноду
+    const node = currentLevelNodes.find(n => n.id === elementId);
+    if (node) {
+      const nodeType = node.type === 'inputNode' ? 'input' :
+                      node.type === 'outputNode' ? 'output' :
+                      node.type === 'populationNode' ? 'population' :
+                      node.type === 'groupNode' ? 'group' : 'node';
+      
+      const newSelectedElement = {
+        type: nodeType,
+        id: node.id,
+        data: node.data,
+        position: node.position,
+        width: node.width,
+        height: node.height
+      };
+      
+      setSelectedElement(() => newSelectedElement);
+      return;
+    }
+    
+    // Ищем ребро
+    const edge = currentLevelEdges.find(e => e.id === elementId);
+    if (edge) {
+      const newSelectedElement = {
+        type: 'edge',
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        animated: edge.animated,
+        data: edge.data
+      };
+      
+      setSelectedElement(() => newSelectedElement);
+      return;
+    }
+  }, [getFlowContent, internalSchema.flowHistoryStack]);
+
   const drillIntoGroup = useCallback((nodeId) => {
     // Ищем узел группы на ТЕКУЩЕМ уровне, а не всегда в корневой схеме
     const nodeToDrillInto = nodes.find(n => n.id === nodeId);
@@ -735,6 +777,7 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
           initialPanelWidth={panelWidthState}
           onSaveSettings={handleSavePanelSettings}
           onElementSettingsChange={handleElementSettingsChange}
+          onUpdateSelectedElement={updateSelectedElement}
           currentSchema={currentSchema}
         />
       </ReactFlow>

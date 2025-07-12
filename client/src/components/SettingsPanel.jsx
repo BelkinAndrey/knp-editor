@@ -3,7 +3,7 @@ import './SettingsPanel.css'; // Import styles for the settings panel and button
 import NeuronParamsPanel from './NeuronParamsPanel';
 import EdgeParamsPanel from './EdgeParamsPanel';
 
-const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings, onElementSettingsChange, currentSchema }) => {
+const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initialPanelCollapsed = false, initialPanelWidth = 300, onSaveSettings, onElementSettingsChange, onUpdateSelectedElement, currentSchema }) => {
   const [panelWidth, setPanelWidth] = useState(initialPanelWidth); // Initial panel width from props
   const [isResizing, setIsResizing] = useState(false);
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(initialPanelCollapsed); // Collapsed/expanded state
@@ -835,20 +835,41 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
           }))
         );
         
+        // Обновляем выбранный элемент в панели настроек
+        onUpdateSelectedElement?.(parentId);
+        
         // Центрируем канвас на родительской ноде
         const parentPosition = parentNode.position;
         const viewport = window.reactFlowInstance.getViewport();
-        const centerX = parentPosition.x;
-        const centerY = parentPosition.y;
         
-        window.reactFlowInstance.setViewport({
-          x: -centerX + window.innerWidth / 2,
-          y: -centerY + window.innerHeight / 2,
+        // Учитываем размеры панели настроек при центрировании
+        const currentPanelWidth = isPanelCollapsed ? 0 : panelWidth;
+        const availableWidth = window.innerWidth - currentPanelWidth;
+        const centerX = availableWidth / 2;
+        const centerY = window.innerHeight / 2;
+
+        // Корректное вычисление смещения viewport
+        const newViewport = {
+          x: -(parentPosition.x - centerX),
+          y: -(parentPosition.y - centerY),
           zoom: viewport.zoom
-        });
+        };
+        
+        window.reactFlowInstance.setViewport(newViewport);
+        
+        // Дополнительно используем fitView для лучшего центрирования
+        setTimeout(() => {
+          window.reactFlowInstance.fitView({
+            nodes: [parentNode],
+            padding: 0.1,
+            includeHiddenNodes: false,
+            minZoom: 0.5,
+            maxZoom: 2
+          });
+        }, 100);
       }
     }
-  }, [selectedElement]);
+  }, [selectedElement, isPanelCollapsed, panelWidth, onUpdateSelectedElement]);
 
   return (
     <>
@@ -1328,71 +1349,48 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                           className="settings-panel-input"
                         />
                       </div>
-                      
-                      {/* Информация о родительской ноде */}
-                      {selectedElement.data?.parent && (
-                        <>
-                          <div className="settings-section-separator"></div>
-                          <div className="setting-item">
-                            <span className="setting-label">Parent:</span>
-                            <div style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '10px',
-                              color: '#888',
-                              fontSize: '0.9em'
-                            }}>
-                              <span>{selectedElement.data.parent}</span>
-                              <button
-                                onClick={handleGoToParent}
-                                className="settings-panel-button"
-                                style={{
-                                  padding: '4px 8px',
-                                  backgroundColor: '#4a4a4a',
-                                  color: 'white',
-                                  border: '1px solid #666',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '0.8em'
-                                }}
-                              >
-                                Go to parent
-                              </button>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                      
-                      {/* Кнопки управления родительством */}
+                      {/* Информация о родительской ноде и кнопки управления родительством */}
                       <div className="settings-section-separator"></div>
-                      <div className="setting-item" style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                        {selectedElement.data?.parent ? (
+                      {selectedElement.data?.parent ? (
+                        <div className="setting-item" style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
+                          <span className="setting-label">Parent:</span>
+                          <span style={{ color: '#888', fontSize: '0.9em' }}>{selectedElement.data.parent}</span>
+                          <button
+                            onClick={handleGoToParent}
+                            className="settings-panel-button"
+                            style={{
+                              padding: '4px 8px',
+                              backgroundColor: '#4a4a4a',
+                              color: 'white',
+                              border: '1px solid #666',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.8em'
+                            }}
+                          >
+                            Go to parent
+                          </button>
                           <button
                             onClick={handleLeaveParent}
                             className="settings-panel-button"
                             style={{
-                              padding: '6px 12px',
+                              padding: '4px 8px',
                               backgroundColor: '#ff9800',
                               color: 'white',
                               border: '1px solid #ff9800',
                               borderRadius: '4px',
                               cursor: 'pointer',
-                              fontSize: '0.9em'
+                              fontSize: '0.8em'
                             }}
                           >
                             Leave parent
                           </button>
-                        ) : (
-                          <div style={{ 
-                            color: '#888', 
-                            fontSize: '0.9em', 
-                            fontStyle: 'italic',
-                            textAlign: 'center'
-                          }}>
-                            This group has no parent
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div className="setting-item" style={{ color: '#888', fontSize: '0.9em', fontStyle: 'italic', textAlign: 'center' }}>
+                          This group has no parent
+                        </div>
+                      )}
                     </div>
                   )}
 
