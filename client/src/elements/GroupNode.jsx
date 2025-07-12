@@ -1,7 +1,7 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
 
-const GroupNode = ({ data, selected }) => {
+const GroupNode = ({ data, selected, id }) => {
   // Получаем список input и output нод из subFlow (только ноды на корневом уровне группы)
   const inputNodes = data.subFlow?.nodes?.filter(node => 
     node.type === 'inputNode' && !node.parentNode
@@ -12,6 +12,90 @@ const GroupNode = ({ data, selected }) => {
 
   // Вычисляем общее количество портов для определения высоты ноды
   const totalPorts = Math.max(inputNodes.length, outputNodes.length, 1);
+
+  // Функция для копирования ноды
+  const handleDuplicateClick = (e) => {
+    e.stopPropagation();
+    
+    // Получаем текущее название ноды
+    const currentLabel = data.label || 'Group';
+    
+    // Функция для генерации нового названия с инкрементом номера
+    const generateNewLabel = (label) => {
+      // Ищем число в конце строки
+      const match = label.match(/^(.*?)(\d+)$/);
+      if (match) {
+        const baseName = match[1];
+        const currentNumber = parseInt(match[2]);
+        return `${baseName}${currentNumber + 1}`;
+      } else {
+        // Если числа нет, добавляем " 1"
+        return `${label} 1`;
+      }
+    };
+
+    const newLabel = generateNewLabel(currentLabel);
+    
+    // Создаем глубокую копию subFlow
+    const deepCopySubFlow = (subFlow) => {
+      if (!subFlow) return { nodes: [], edges: [], position: [0, 0], zoom: 1 };
+      
+      // Создаем карту для замены старых ID на новые
+      const idMap = new Map();
+      
+      // Копируем ноды с новыми ID
+      const newNodes = subFlow.nodes ? subFlow.nodes.map(node => {
+        const newNodeId = `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        idMap.set(node.id, newNodeId);
+        
+        return {
+          ...node,
+          id: newNodeId,
+          data: { ...node.data }
+        };
+      }) : [];
+      
+      // Копируем связи с обновленными source и target
+      const newEdges = subFlow.edges ? subFlow.edges.map(edge => {
+        const newEdgeId = `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const newSource = idMap.get(edge.source) || edge.source;
+        const newTarget = idMap.get(edge.target) || edge.target;
+        
+        return {
+          ...edge,
+          id: newEdgeId,
+          source: newSource,
+          target: newTarget
+        };
+      }) : [];
+      
+      return {
+        nodes: newNodes,
+        edges: newEdges,
+        position: subFlow.position || [0, 0],
+        zoom: subFlow.zoom || 1
+      };
+    };
+
+    // Создаем новую ноду
+    const newNode = {
+      id: `node-${Date.now()}`,
+      type: 'groupNode',
+      position: { 
+        x: (data.position?.x || 0) + 250, 
+        y: (data.position?.y || 0) + 50 
+      },
+      data: {
+        label: newLabel,
+        subFlow: deepCopySubFlow(data.subFlow)
+      }
+    };
+
+    // Вызываем глобальную функцию для добавления ноды
+    if (window.addGroupNodeCopy) {
+      window.addGroupNodeCopy(newNode);
+    }
+  };
 
   return (
     <div style={{
@@ -40,7 +124,13 @@ const GroupNode = ({ data, selected }) => {
         borderBottom: '1px solid var(--border-color)',
       }}>
         <div>{data.label || 'Group'}</div>
-        <span style={{ cursor: 'pointer' }}>+</span>
+        <span 
+          style={{ cursor: 'pointer' }}
+          onClick={handleDuplicateClick}
+          title="Дублировать ноду"
+        >
+          +
+        </span>
       </div>
 
       {/* Тело ноды с портами */}

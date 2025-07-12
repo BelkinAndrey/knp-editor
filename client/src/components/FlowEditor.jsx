@@ -622,6 +622,24 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
     }));
   }, [nodes, edges, getViewport, internalSchema.flowHistoryStack, updateFlowContent]);
 
+  // Функция для добавления копии GroupNode
+  const addGroupNodeCopy = useCallback((newNode) => {
+    const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
+    const newNodes = [...currentLevelNodes, newNode];
+    setNodes(newNodes);
+
+    const viewport = getViewport();
+    updateFlowContent(internalSchema.flowHistoryStack || [], newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+  }, [getFlowContent, internalSchema.flowHistoryStack, getViewport, updateFlowContent]);
+
+  // Делаем функцию доступной глобально
+  useEffect(() => {
+    window.addGroupNodeCopy = addGroupNodeCopy;
+    return () => {
+      delete window.addGroupNodeCopy;
+    };
+  }, [addGroupNodeCopy]);
+
   // Обработчик для отслеживания кликов по документу
   useEffect(() => {
     const handleDocumentClick = (event) => {
