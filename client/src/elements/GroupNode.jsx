@@ -156,6 +156,16 @@ const GroupNode = (props) => {
     }
   };
 
+  // Функция для предотвращения всплытия событий от заголовка
+  const handleHeaderClick = (e) => {
+    e.stopPropagation();
+  };
+
+  // Функция для предотвращения всплытия двойного клика от заголовка
+  const handleHeaderDoubleClick = (e) => {
+    e.stopPropagation();
+  };
+
   return (
     <div style={{
       borderRadius: '10px',
@@ -169,19 +179,23 @@ const GroupNode = (props) => {
       borderColor: selected ? 'var(--accent-color)' : 'var(--border-color)',
     }}>
       {/* Заголовок ноды */}
-      <div style={{
-        background: 'var(--node-header-bg, #444)',
-        padding: '8px 12px',
-        borderTopLeftRadius: '8px',
-        borderTopRightRadius: '8px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: '14px',
-        borderBottom: '1px solid var(--border-color)',
-      }}>
+      <div 
+        style={{
+          background: 'var(--node-header-bg, #444)',
+          padding: '8px 12px',
+          borderTopLeftRadius: '8px',
+          borderTopRightRadius: '8px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: 'white',
+          fontWeight: 'bold',
+          fontSize: '14px',
+          borderBottom: '1px solid var(--border-color)',
+        }}
+        onClick={handleHeaderClick}
+        onDoubleClick={handleHeaderDoubleClick}
+      >
         <div>{data.label || 'Group'}</div>
         <span 
           style={{ cursor: 'pointer' }}
