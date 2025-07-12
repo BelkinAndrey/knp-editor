@@ -207,6 +207,15 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
       const elementData = selectedElement.data || {};
       const newLabel = elementData.label || '';
       setGroupLabel(newLabel);
+      
+      // Если нода имеет родителя, не показываем subFlow в настройках
+      // так как она использует схему родителя
+      if (elementData.parent) {
+        // Нода является наследником - показываем информацию о родителе
+        // subFlow будет пустым, так как используется схема родителя
+      } else {
+        // Нода является независимой - может иметь свой subFlow
+      }
     } else if (selectedElement.type === 'edge') {
       const elementData = selectedElement.data || {};
       const newColor = elementData.color || '#000000';
@@ -748,6 +757,99 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
     });
   }, [globalParams, onElementSettingsChange]);
 
+  // Обработчик для выхода из родительской ноды
+  const handleLeaveParent = useCallback(() => {
+    if (!selectedElement || !selectedElement.data?.parent) return;
+    
+    // Получаем схему родителя
+    const allNodes = window.reactFlowInstance ? window.reactFlowInstance.getNodes() : [];
+    const parentNode = allNodes.find(node => node.id === selectedElement.data.parent);
+    
+    if (parentNode?.data?.subFlow) {
+      // Создаем глубокую копию схемы родителя
+      const deepCopySubFlow = (subFlow) => {
+        if (!subFlow) return { nodes: [], edges: [], position: [0, 0], zoom: 1 };
+        
+        const idMap = new Map();
+        
+        const newNodes = subFlow.nodes ? subFlow.nodes.map(node => {
+          const newNodeId = `node-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          idMap.set(node.id, newNodeId);
+          
+          return {
+            ...node,
+            id: newNodeId,
+            data: {
+              ...node.data,
+              ...(node.type === 'groupNode' && { subFlow: deepCopySubFlow(node.data.subFlow) })
+            }
+          };
+        }) : [];
+        
+        const newEdges = subFlow.edges ? subFlow.edges.map(edge => {
+          const newEdgeId = `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const newSource = idMap.get(edge.source) || edge.source;
+          const newTarget = idMap.get(edge.target) || edge.target;
+          
+          return {
+            ...edge,
+            id: newEdgeId,
+            source: newSource,
+            target: newTarget
+          };
+        }) : [];
+        
+        return {
+          nodes: newNodes,
+          edges: newEdges,
+          position: subFlow.position || [0, 0],
+          zoom: subFlow.zoom || 1
+        };
+      };
+
+      // Обновляем ноду: убираем родителя и копируем его схему
+      onElementSettingsChange?.(selectedElement.id, {
+        parent: null,
+        subFlow: deepCopySubFlow(parentNode.data.subFlow)
+      });
+    }
+  }, [selectedElement, onElementSettingsChange]);
+
+  // Обработчик для перехода к родительской ноде
+  const handleGoToParent = useCallback(() => {
+    if (!selectedElement || !selectedElement.data?.parent) return;
+    
+    const parentId = selectedElement.data.parent;
+    
+    // Выделяем родительскую ноду
+    if (window.reactFlowInstance) {
+      const allNodes = window.reactFlowInstance.getNodes();
+      const parentNode = allNodes.find(node => node.id === parentId);
+      
+      if (parentNode) {
+        // Выделяем родительскую ноду
+        window.reactFlowInstance.setNodes(nodes => 
+          nodes.map(node => ({
+            ...node,
+            selected: node.id === parentId
+          }))
+        );
+        
+        // Центрируем канвас на родительской ноде
+        const parentPosition = parentNode.position;
+        const viewport = window.reactFlowInstance.getViewport();
+        const centerX = parentPosition.x;
+        const centerY = parentPosition.y;
+        
+        window.reactFlowInstance.setViewport({
+          x: -centerX + window.innerWidth / 2,
+          y: -centerY + window.innerHeight / 2,
+          zoom: viewport.zoom
+        });
+      }
+    }
+  }, [selectedElement]);
+
   return (
     <>
       {/* Button for collapsing/expanding */}
@@ -1225,6 +1327,71 @@ const SettingsPanel = ({ selectedElement, isVisible, onToggleVisibility, initial
                           placeholder="Enter group name (no spaces allowed)"
                           className="settings-panel-input"
                         />
+                      </div>
+                      
+                      {/* Информация о родительской ноде */}
+                      {selectedElement.data?.parent && (
+                        <>
+                          <div className="settings-section-separator"></div>
+                          <div className="setting-item">
+                            <span className="setting-label">Parent:</span>
+                            <div style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '10px',
+                              color: '#888',
+                              fontSize: '0.9em'
+                            }}>
+                              <span>{selectedElement.data.parent}</span>
+                              <button
+                                onClick={handleGoToParent}
+                                className="settings-panel-button"
+                                style={{
+                                  padding: '4px 8px',
+                                  backgroundColor: '#4a4a4a',
+                                  color: 'white',
+                                  border: '1px solid #666',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.8em'
+                                }}
+                              >
+                                Go to parent
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      
+                      {/* Кнопки управления родительством */}
+                      <div className="settings-section-separator"></div>
+                      <div className="setting-item" style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                        {selectedElement.data?.parent ? (
+                          <button
+                            onClick={handleLeaveParent}
+                            className="settings-panel-button"
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: '#ff9800',
+                              color: 'white',
+                              border: '1px solid #ff9800',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '0.9em'
+                            }}
+                          >
+                            Leave parent
+                          </button>
+                        ) : (
+                          <div style={{ 
+                            color: '#888', 
+                            fontSize: '0.9em', 
+                            fontStyle: 'italic',
+                            textAlign: 'center'
+                          }}>
+                            This group has no parent
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

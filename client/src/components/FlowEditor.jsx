@@ -128,11 +128,18 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
 
     for (const flowId of historyStack) {
       const groupNode = currentNodes.find(n => n.id === flowId);
-      if (groupNode && groupNode.type === 'groupNode' && groupNode.data && groupNode.data.subFlow) {
-        currentNodes = groupNode.data.subFlow.nodes;
-        currentEdges = groupNode.data.subFlow.edges;
-        currentPosition = groupNode.data.subFlow.position;
-        currentZoom = groupNode.data.subFlow.zoom;
+      if (groupNode && groupNode.type === 'groupNode' && groupNode.data) {
+        // Проверяем, есть ли у ноды собственная схема
+        if (groupNode.data.subFlow && Object.keys(groupNode.data.subFlow).length > 0) {
+          // Нода имеет собственную схему
+          currentNodes = groupNode.data.subFlow.nodes;
+          currentEdges = groupNode.data.subFlow.edges;
+          currentPosition = groupNode.data.subFlow.position;
+          currentZoom = groupNode.data.subFlow.zoom;
+        } else {
+          // Нода не имеет собственной схемы - возвращаем пустую схему
+          return { nodes: [], edges: [], position: [0,0], zoom: 1 };
+        }
       } else {
         return { nodes: [], edges: [], position: [0,0], zoom: 1 };
       }
@@ -590,7 +597,18 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
   const drillIntoGroup = useCallback((nodeId) => {
     // Ищем узел группы на ТЕКУЩЕМ уровне, а не всегда в корневой схеме
     const nodeToDrillInto = nodes.find(n => n.id === nodeId);
-    if (nodeToDrillInto && nodeToDrillInto.type === 'groupNode' && nodeToDrillInto.data.subFlow) {
+    if (nodeToDrillInto && nodeToDrillInto.type === 'groupNode') {
+      // Проверяем, что нода не имеет родителя и имеет собственную схему
+      if (nodeToDrillInto.data?.parent) {
+        console.log('Cannot drill into child node:', nodeId);
+        return;
+      }
+      
+      if (!nodeToDrillInto.data?.subFlow || Object.keys(nodeToDrillInto.data.subFlow).length === 0) {
+        console.log('Cannot drill into node without schema:', nodeId);
+        return;
+      }
+      
       const viewport = getViewport();
       // Сохраняем текущее состояние потока перед проваливанием
       updateFlowContent(internalSchema.flowHistoryStack || [], nodes, edges, [viewport.x, viewport.y], viewport.zoom);
@@ -670,6 +688,12 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
         onEdgeClick={onEdgeClick}
         onNodeDoubleClick={(event, node) => {
           if (node.type === 'groupNode') {
+            // Если нода имеет родителя, проваливаемся в родителя
+            if (node.data?.parent) {
+              drillIntoGroup(node.data.parent);
+              return;
+            }
+            // Если нода не имеет родителя, проваливаемся в неё
             drillIntoGroup(node.id);
           }
         }}

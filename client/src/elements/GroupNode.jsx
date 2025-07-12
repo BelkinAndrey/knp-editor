@@ -4,16 +4,48 @@ import { Handle, Position } from 'reactflow';
 const GroupNode = (props) => {
   const { data, selected, id } = props;
   const position = { x: props.xPos ?? 0, y: props.yPos ?? 0 };
+  
   // Получаем список input и output нод из subFlow (только ноды на корневом уровне группы)
-  const inputNodes = data.subFlow?.nodes?.filter(node => 
+  // Если нода имеет родителя, используем схему родителя
+  const getEffectiveSubFlow = () => {
+    if (data.parent) {
+      // Если есть родитель, получаем его схему
+      const allNodes = window.reactFlowInstance ? window.reactFlowInstance.getNodes() : [];
+      const parentNode = allNodes.find(node => node.id === data.parent);
+      return parentNode?.data?.subFlow || { nodes: [], edges: [] };
+    }
+    return data.subFlow || { nodes: [], edges: [] };
+  };
+
+  const effectiveSubFlow = getEffectiveSubFlow();
+  const inputNodes = effectiveSubFlow.nodes?.filter(node => 
     node.type === 'inputNode' && !node.parentNode
   ) || [];
-  const outputNodes = data.subFlow?.nodes?.filter(node => 
+  const outputNodes = effectiveSubFlow.nodes?.filter(node => 
     node.type === 'outputNode' && !node.parentNode
   ) || [];
 
   // Вычисляем общее количество портов для определения высоты ноды
   const totalPorts = Math.max(inputNodes.length, outputNodes.length, 1);
+
+  // Функция для определения статуса ноды
+  const getNodeStatus = () => {
+    const allNodes = window.reactFlowInstance ? window.reactFlowInstance.getNodes() : [];
+    
+    // Проверяем, является ли эта нода родителем для других нод
+    const isParent = allNodes.some(node => 
+      node.type === 'groupNode' && node.data?.parent === id
+    );
+    
+    // Проверяем, является ли эта нода наследником
+    const isChild = !!data.parent;
+    
+    if (isParent) return 'parent'; // зеленый кружок
+    if (isChild) return 'child';   // желтый кружок
+    return 'none';                 // пустой
+  };
+
+  const nodeStatus = getNodeStatus();
 
   // Функция для копирования ноды
   const handleDuplicateClick = (e) => {
@@ -136,6 +168,9 @@ const GroupNode = (props) => {
     // Увеличиваем счетчик копий
     copyState.copyCount++;
 
+    // Новая нода всегда становится наследником копируемой ноды
+    const newParent = id; // ID текущей ноды становится родителем для новой ноды
+
     // Создаем новую ноду
     const newNode = {
       id: `node-${Date.now()}`,
@@ -146,7 +181,8 @@ const GroupNode = (props) => {
       },
       data: {
         label: newLabel,
-        subFlow: deepCopySubFlow(data.subFlow)
+        parent: newParent, // Устанавливаем текущую ноду как родителя
+        // Новая нода не имеет собственного subFlow, так как использует схему родителя
       }
     };
 
@@ -166,18 +202,22 @@ const GroupNode = (props) => {
     e.stopPropagation();
   };
 
+
+
   return (
-    <div style={{
-      borderRadius: '10px',
-      border: '1px solid var(--border-color)',
-      backgroundColor: '#303030',
-      minWidth: '200px',
-      minHeight: `${Math.max(100, 30 + totalPorts * 35)}px`,
-      display: 'flex',
-      flexDirection: 'column',
-      boxShadow: selected ? '0 0 0 3px var(--accent-color)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
-      borderColor: selected ? 'var(--accent-color)' : 'var(--border-color)',
-    }}>
+    <div 
+      style={{
+        borderRadius: '10px',
+        border: '1px solid var(--border-color)',
+        backgroundColor: '#303030',
+        minWidth: '200px',
+        minHeight: `${Math.max(100, 30 + totalPorts * 35)}px`,
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: selected ? '0 0 0 3px var(--accent-color)' : '0 2px 4px rgba(0, 0, 0, 0.1)',
+        borderColor: selected ? 'var(--accent-color)' : 'var(--border-color)',
+      }}
+    >
       {/* Заголовок ноды */}
       <div 
         style={{
@@ -196,7 +236,34 @@ const GroupNode = (props) => {
         onClick={handleHeaderClick}
         onDoubleClick={handleHeaderDoubleClick}
       >
-        <div>{data.label || 'Group'}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>{data.label || 'Group'}</span>
+          {/* Индикатор статуса */}
+          {nodeStatus === 'parent' && (
+            <div
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#4CAF50', // зеленый
+                flexShrink: 0
+              }}
+              title="Эта нода является родителем для других нод"
+            />
+          )}
+          {nodeStatus === 'child' && (
+            <div
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#FFC107', // желтый
+                flexShrink: 0
+              }}
+              title="Эта нода является наследником"
+            />
+          )}
+        </div>
         <span 
           style={{ cursor: 'pointer' }}
           onClick={handleDuplicateClick}
