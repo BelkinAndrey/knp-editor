@@ -682,13 +682,16 @@ const FlowEditorContent = ({ currentSchema, onSchemaChange, clearInternalSchemaR
   }, [nodes, edges, getViewport, internalSchema.flowHistoryStack, updateFlowContent]);
 
   // Функция для добавления копии GroupNode
-  const addGroupNodeCopy = useCallback((newNode) => {
+  const addGroupNodeCopy = useCallback((newNode, newEdges = []) => {
     const { nodes: currentLevelNodes, edges: currentLevelEdges } = getFlowContent(internalSchema.flowHistoryStack || []);
     const newNodes = [...currentLevelNodes, newNode];
+    const updatedEdges = [...currentLevelEdges, ...newEdges];
+    
     setNodes(newNodes);
+    setEdges(updatedEdges);
 
     const viewport = getViewport();
-    updateFlowContent(internalSchema.flowHistoryStack || [], newNodes, currentLevelEdges, [viewport.x, viewport.y], viewport.zoom);
+    updateFlowContent(internalSchema.flowHistoryStack || [], newNodes, updatedEdges, [viewport.x, viewport.y], viewport.zoom);
   }, [getFlowContent, internalSchema.flowHistoryStack, getViewport, updateFlowContent]);
 
   // Делаем функцию доступной глобально

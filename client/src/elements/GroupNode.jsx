@@ -193,9 +193,48 @@ const GroupNode = (props) => {
       }
     };
 
-    // Вызываем глобальную функцию для добавления ноды
+    // Получаем все связи текущего уровня
+    const getAllEdges = () => {
+      if (window.reactFlowInstance) {
+        return window.reactFlowInstance.getEdges();
+      }
+      return [];
+    };
+
+    const allEdges = getAllEdges();
+    
+    // Находим связи, которые подключены к исходной ноде
+    const connectedEdges = allEdges.filter(edge => {
+      // Проверяем, подключена ли связь к исходной ноде
+      return edge.source === id || edge.target === id;
+    });
+
+    // Создаем копии связей для новой ноды
+    const newEdges = connectedEdges.map(edge => {
+      const newEdgeId = `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Определяем новые source и target
+      let newSource = edge.source;
+      let newTarget = edge.target;
+      
+      if (edge.source === id) {
+        newSource = newNode.id;
+      }
+      if (edge.target === id) {
+        newTarget = newNode.id;
+      }
+      
+      return {
+        ...edge,
+        id: newEdgeId,
+        source: newSource,
+        target: newTarget
+      };
+    });
+
+    // Вызываем глобальную функцию для добавления ноды и связей
     if (window.addGroupNodeCopy) {
-      window.addGroupNodeCopy(newNode);
+      window.addGroupNodeCopy(newNode, newEdges);
     }
   };
 
